@@ -56,10 +56,10 @@ class Config {
 	 */
 	public function get_token(): string {
 		if ( defined( 'CINQ_THEME_UPDATE_GITHUB_TOKEN' ) && '' !== CINQ_THEME_UPDATE_GITHUB_TOKEN ) {
-			return (string) apply_filters( 'cinq_theme_update_checker_token', CINQ_THEME_UPDATE_GITHUB_TOKEN );
+			return (string) apply_filters( 'cinq_theme_update_checker_token', $this->sanitize_token( CINQ_THEME_UPDATE_GITHUB_TOKEN ) );
 		}
 
-		return (string) apply_filters( 'cinq_theme_update_checker_token', $this->get_setting( 'github_token' ) );
+		return (string) apply_filters( 'cinq_theme_update_checker_token', $this->sanitize_token( $this->get_setting( 'github_token' ) ) );
 	}
 
 	/**
@@ -121,7 +121,7 @@ class Config {
 			array(
 				'theme_slug'    => sanitize_key( $settings['theme_slug'] ?? '' ),
 				'repository'    => $this->sanitize_repository( $settings['repository'] ?? '' ),
-				'github_token'  => sanitize_text_field( $settings['github_token'] ?? '' ),
+				'github_token'  => $this->sanitize_token( $settings['github_token'] ?? '' ),
 				'tag_prefix'    => sanitize_text_field( $settings['tag_prefix'] ?? 'v' ),
 				'zip_filename'  => sanitize_file_name( $settings['zip_filename'] ?? '' ),
 			),
@@ -214,5 +214,16 @@ class Config {
 		}
 
 		return $repository;
+	}
+
+	/**
+	 * Normalize a GitHub token before storage or use.
+	 *
+	 * @param string $token Raw token value.
+	 */
+	private function sanitize_token( string $token ): string {
+		$token = trim( wp_unslash( $token ) );
+
+		return preg_replace( '/\s+/', '', $token ) ?? '';
 	}
 }

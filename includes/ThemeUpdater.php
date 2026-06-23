@@ -140,10 +140,11 @@ class ThemeUpdater {
 			array(
 				'timeout'  => 300,
 				'headers'  => array(
-					'Authorization' => 'Bearer ' . $token,
+					'Authorization' => $this->github->get_authorization_header(),
 					'Accept'        => 'application/octet-stream',
 					'User-Agent'    => 'CINQ-Theme-Update-Checker/' . CINQ_THEME_UPDATE_CHECKER_VERSION,
 				),
+				'sslverify' => (bool) apply_filters( 'cinq_theme_update_checker_sslverify', true ),
 			)
 		);
 

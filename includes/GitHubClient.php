@@ -13,6 +13,7 @@ namespace CinqThemeUpdateChecker;
 class GitHubClient {
 
 	private const CACHE_KEY = 'cinq_theme_update_checker_release';
+	private const ERROR_KEY = 'cinq_theme_update_checker_last_error';
 	private const CACHE_TTL = 12 * HOUR_IN_SECONDS;
 
 	/**
@@ -30,54 +31,104 @@ class GitHubClient {
 	 * @return array<string, mixed>|null
 	 */
 	public function get_latest_release(): ?array {
+		$result = $this->fetch_latest_release();
+
+		return $result['release'];
+	}
+
+	/**
+	 * Fetch the latest release and capture API errors.
+	 *
+	 * @return array{release: array<string, mixed>|null, error: string|null}
+	 */
+	public function fetch_latest_release(): array {
 		if ( ! $this->config->is_configured() ) {
-			return null;
+			$error = __( 'Repository and GitHub token are required.', 'cinq-theme-update-checker' );
+
+			$this->store_error( $error );
+
+			return array(
+				'release' => null,
+				'error'   => $error,
+			);
 		}
 
 		$cache_key = self::CACHE_KEY . '_' . md5( $this->config->get_repository() );
 		$cached    = get_site_transient( $cache_key );
 
 		if ( is_array( $cached ) ) {
-			return $cached;
+			$this->store_error( null );
+
+			return array(
+				'release' => $cached,
+				'error'   => null,
+			);
 		}
 
 		$repository = $this->config->get_repository();
-		$response   = wp_remote_get(
-			'https://api.github.com/repos/' . $repository . '/releases/latest',
-			array(
-				'timeout' => 15,
-				'headers' => $this->get_headers(),
-			)
+		$response   = $this->request(
+			'https://api.github.com/repos/' . $repository . '/releases/latest'
 		);
 
-		if ( is_wp_error( $response ) ) {
-			return null;
+		if ( null !== $response['error'] && 404 === $response['status_code'] ) {
+			$response = $this->request(
+				'https://api.github.com/repos/' . $repository . '/releases?per_page=1'
+			);
+
+			if ( null === $response['error'] && is_array( $response['body'] ) && ! empty( $response['body'][0] ) ) {
+				$response['body'] = $response['body'][0];
+			} else {
+				$response['body'] = null;
+			}
 		}
 
-		$status_code = (int) wp_remote_retrieve_response_code( $response );
+		if ( null !== $response['error'] ) {
+			$this->store_error( $response['error'] );
 
-		if ( 200 !== $status_code ) {
-			return null;
+			return array(
+				'release' => null,
+				'error'   => $response['error'],
+			);
 		}
 
-		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		$body = $response['body'];
 
 		if ( ! is_array( $body ) || empty( $body['tag_name'] ) ) {
-			return null;
+			$error = __( 'GitHub returned an unexpected release response.', 'cinq-theme-update-checker' );
+
+			$this->store_error( $error );
+
+			return array(
+				'release' => null,
+				'error'   => $error,
+			);
 		}
 
 		$release = array(
-			'tag_name'    => (string) $body['tag_name'],
-			'version'     => $this->normalize_version( (string) $body['tag_name'] ),
-			'url'         => (string) ( $body['html_url'] ?? '' ),
-			'changelog'   => (string) ( $body['body'] ?? '' ),
-			'package'     => $this->resolve_package_url( $body ),
-			'published_at'=> (string) ( $body['published_at'] ?? '' ),
+			'tag_name'     => (string) $body['tag_name'],
+			'version'      => $this->normalize_version( (string) $body['tag_name'] ),
+			'url'          => (string) ( $body['html_url'] ?? '' ),
+			'changelog'    => (string) ( $body['body'] ?? '' ),
+			'package'      => $this->resolve_package_url( $body ),
+			'published_at' => (string) ( $body['published_at'] ?? '' ),
 		);
 
 		set_site_transient( $cache_key, $release, self::CACHE_TTL );
+		$this->store_error( null );
 
-		return $release;
+		return array(
+			'release' => $release,
+			'error'   => null,
+		);
+	}
+
+	/**
+	 * Return the last API error message, if any.
+	 */
+	public function get_last_error(): ?string {
+		$error = get_site_transient( self::ERROR_KEY );
+
+		return is_string( $error ) && '' !== $error ? $error : null;
 	}
 
 	/**
@@ -86,6 +137,7 @@ class GitHubClient {
 	public function clear_cache(): void {
 		$cache_key = self::CACHE_KEY . '_' . md5( $this->config->get_repository() );
 		delete_site_transient( $cache_key );
+		delete_site_transient( self::ERROR_KEY );
 	}
 
 	/**
@@ -95,11 +147,117 @@ class GitHubClient {
 	 */
 	public function get_headers(): array {
 		return array(
-			'Authorization'    => 'Bearer ' . $this->config->get_token(),
-			'Accept'           => 'application/vnd.github+json',
+			'Authorization'        => $this->get_authorization_header(),
+			'Accept'               => 'application/vnd.github+json',
 			'X-GitHub-Api-Version' => '2022-11-28',
-			'User-Agent'       => 'CINQ-Theme-Update-Checker/' . CINQ_THEME_UPDATE_CHECKER_VERSION,
+			'User-Agent'           => 'CINQ-Theme-Update-Checker/' . CINQ_THEME_UPDATE_CHECKER_VERSION,
 		);
+	}
+
+	/**
+	 * Build the Authorization header for GitHub personal access tokens.
+	 */
+	public function get_authorization_header(): string {
+		$token = $this->config->get_token();
+
+		if ( str_starts_with( $token, 'ghp_' ) || str_starts_with( $token, 'gho_' ) ) {
+			return 'token ' . $token;
+		}
+
+		return 'Bearer ' . $token;
+	}
+
+	/**
+	 * Perform a GitHub API request.
+	 *
+	 * @param string $url Request URL.
+	 * @return array{status_code: int, body: mixed, error: string|null}
+	 */
+	private function request( string $url ): array {
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout'   => 15,
+				'headers'   => $this->get_headers(),
+				'sslverify' => (bool) apply_filters( 'cinq_theme_update_checker_sslverify', true ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return array(
+				'status_code' => 0,
+				'body'        => null,
+				'error'       => $response->get_error_message(),
+			);
+		}
+
+		$status_code = (int) wp_remote_retrieve_response_code( $response );
+		$body        = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( 200 !== $status_code ) {
+			return array(
+				'status_code' => $status_code,
+				'body'        => $body,
+				'error'       => $this->format_api_error( $status_code, $body ),
+			);
+		}
+
+		return array(
+			'status_code' => $status_code,
+			'body'        => $body,
+			'error'       => null,
+		);
+	}
+
+	/**
+	 * Format a GitHub API error for display.
+	 *
+	 * @param int   $status_code HTTP status code.
+	 * @param mixed $body        Response body.
+	 */
+	private function format_api_error( int $status_code, mixed $body ): string {
+		$message = '';
+
+		if ( is_array( $body ) && ! empty( $body['message'] ) ) {
+			$message = (string) $body['message'];
+		}
+
+		if ( '' === $message ) {
+			$message = __( 'GitHub API request failed.', 'cinq-theme-update-checker' );
+		}
+
+		if ( 404 === $status_code ) {
+			$message .= ' ' . __( 'Check that the repository exists and the token can access it.', 'cinq-theme-update-checker' );
+		}
+
+		if ( 401 === $status_code ) {
+			$message .= ' ' . __( 'The token is invalid or expired.', 'cinq-theme-update-checker' );
+		}
+
+		if ( 403 === $status_code && is_array( $body ) && str_contains( (string) ( $body['message'] ?? '' ), 'SAML' ) ) {
+			$message .= ' ' . __( 'Authorize the token for your GitHub organization SSO.', 'cinq-theme-update-checker' );
+		}
+
+		return sprintf(
+			/* translators: 1: HTTP status code, 2: error message */
+			__( 'GitHub API error %1$d: %2$s', 'cinq-theme-update-checker' ),
+			$status_code,
+			$message
+		);
+	}
+
+	/**
+	 * Persist the latest API error for the settings screen.
+	 *
+	 * @param string|null $error Error message.
+	 */
+	private function store_error( ?string $error ): void {
+		if ( null === $error || '' === $error ) {
+			delete_site_transient( self::ERROR_KEY );
+			return;
+		}
+
+		set_site_transient( self::ERROR_KEY, $error, self::CACHE_TTL );
 	}
 
 	/**

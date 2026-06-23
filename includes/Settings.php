@@ -58,7 +58,7 @@ class Settings {
 
 		$stored_settings = get_option( Config::OPTION_KEY, array() );
 		$stored_settings = is_array( $stored_settings ) ? $stored_settings : array();
-		$github_token    = sanitize_text_field( wp_unslash( $_POST['github_token'] ?? '' ) );
+		$github_token    = wp_unslash( $_POST['github_token'] ?? '' );
 
 		if ( '' === $github_token && ! $this->config->has_constant_token() ) {
 			$github_token = (string) ( $stored_settings['github_token'] ?? '' );
@@ -96,9 +96,15 @@ class Settings {
 		$settings   = $this->config->get_settings_for_display();
 		$theme_slug = $this->config->get_theme_slug();
 		$theme      = wp_get_theme( $theme_slug );
-		$release    = $this->config->is_configured()
-			? ( new GitHubClient( $this->config ) )->get_latest_release()
-			: null;
+		$github     = new GitHubClient( $this->config );
+		$fetch      = $this->config->is_configured()
+			? $github->fetch_latest_release()
+			: array(
+				'release' => null,
+				'error'   => __( 'Repository and GitHub token are required.', 'cinq-theme-update-checker' ),
+			);
+		$release    = $fetch['release'];
+		$api_error  = $fetch['error'];
 
 		?>
 		<div class="wrap">
@@ -240,6 +246,22 @@ class Settings {
 			<h2><?php esc_html_e( 'Status', 'cinq-theme-update-checker' ); ?></h2>
 			<ul>
 				<li>
+					<strong><?php esc_html_e( 'GitHub token', 'cinq-theme-update-checker' ); ?>:</strong>
+					<?php
+					if ( $this->config->has_constant_token() ) {
+						esc_html_e( 'Configured via wp-config.php', 'cinq-theme-update-checker' );
+					} elseif ( ! empty( $settings['has_stored_token'] ) ) {
+						esc_html_e( 'Saved in plugin settings', 'cinq-theme-update-checker' );
+					} else {
+						esc_html_e( 'Missing', 'cinq-theme-update-checker' );
+					}
+					?>
+				</li>
+				<li>
+					<strong><?php esc_html_e( 'GitHub repository', 'cinq-theme-update-checker' ); ?>:</strong>
+					<?php echo esc_html( $this->config->get_repository() ?: __( 'not configured', 'cinq-theme-update-checker' ) ); ?>
+				</li>
+				<li>
 					<strong><?php esc_html_e( 'Monitored theme', 'cinq-theme-update-checker' ); ?>:</strong>
 					<?php echo esc_html( $theme->get( 'Name' ) . ' (' . $theme_slug . ')' ); ?>
 				</li>
@@ -251,7 +273,11 @@ class Settings {
 					<strong><?php esc_html_e( 'Latest GitHub release', 'cinq-theme-update-checker' ); ?>:</strong>
 					<?php
 					if ( null === $release ) {
-						esc_html_e( 'Unavailable. Check repository and token settings.', 'cinq-theme-update-checker' );
+						echo esc_html__( 'Unavailable.', 'cinq-theme-update-checker' );
+
+						if ( ! empty( $api_error ) ) {
+							echo ' ' . esc_html( $api_error );
+						}
 					} else {
 						echo esc_html( $release['version'] );
 
