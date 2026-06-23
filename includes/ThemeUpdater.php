@@ -126,63 +126,13 @@ class ThemeUpdater {
 			return $reply;
 		}
 
-		$token = $this->config->get_token();
-
-		if ( '' === $token ) {
+		if ( '' === $this->config->get_token() ) {
 			return new \WP_Error(
 				'cinq_theme_update_checker_missing_token',
 				__( 'A GitHub token is required to download theme updates.', 'cinq-theme-update-checker' )
 			);
 		}
 
-		$response = wp_remote_get(
-			$package,
-			array(
-				'timeout'  => 300,
-				'headers'  => array(
-					'Authorization' => $this->github->get_authorization_header(),
-					'Accept'        => 'application/octet-stream',
-					'User-Agent'    => 'CINQ-Theme-Update-Checker/' . CINQ_THEME_UPDATE_CHECKER_VERSION,
-				),
-				'sslverify' => (bool) apply_filters( 'cinq_theme_update_checker_sslverify', true ),
-			)
-		);
-
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$status_code = (int) wp_remote_retrieve_response_code( $response );
-
-		if ( 200 !== $status_code ) {
-			return new \WP_Error(
-				'cinq_theme_update_checker_download_failed',
-				sprintf(
-					/* translators: %d: HTTP status code */
-					__( 'Theme download failed with HTTP status %d.', 'cinq-theme-update-checker' ),
-					$status_code
-				)
-			);
-		}
-
-		$filename = wp_tempnam( $package );
-
-		if ( ! $filename ) {
-			return new \WP_Error(
-				'cinq_theme_update_checker_temp_file',
-				__( 'Could not create a temporary file for the theme download.', 'cinq-theme-update-checker' )
-			);
-		}
-
-		$written = file_put_contents( $filename, wp_remote_retrieve_body( $response ) );
-
-		if ( false === $written ) {
-			return new \WP_Error(
-				'cinq_theme_update_checker_write_failed',
-				__( 'Could not write the downloaded theme archive.', 'cinq-theme-update-checker' )
-			);
-		}
-
-		return $filename;
+		return $this->github->download_release_asset( $package );
 	}
 }

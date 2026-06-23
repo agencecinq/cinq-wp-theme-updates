@@ -3,7 +3,7 @@
  * Plugin Name: CINQ Theme Update Checker
  * Plugin URI: https://agencecinq.com/
  * Description: Check for theme updates from private GitHub releases.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: CINQ
  * Author URI: https://agencecinq.com/
  * Requires at least: 6.0
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CINQ_THEME_UPDATE_CHECKER_VERSION', '1.0.1' );
+define( 'CINQ_THEME_UPDATE_CHECKER_VERSION', '1.0.2' );
 define( 'CINQ_THEME_UPDATE_CHECKER_FILE', __FILE__ );
 define( 'CINQ_THEME_UPDATE_CHECKER_PATH', plugin_dir_path( __FILE__ ) );
 

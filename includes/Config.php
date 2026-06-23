@@ -107,7 +107,8 @@ class Config {
 			return false;
 		}
 
-		return str_contains( $package, 'github.com/' . $repository );
+		return str_contains( $package, 'github.com/' . $repository )
+			|| str_contains( $package, 'api.github.com/repos/' . $repository );
 	}
 
 	/**

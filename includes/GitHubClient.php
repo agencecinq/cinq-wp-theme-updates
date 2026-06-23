@@ -12,7 +12,7 @@ namespace CinqThemeUpdateChecker;
  */
 class GitHubClient {
 
-	private const CACHE_KEY = 'cinq_theme_update_checker_release';
+	private const CACHE_KEY = 'cinq_theme_update_checker_release_v2';
 	private const ERROR_KEY = 'cinq_theme_update_checker_last_error';
 	private const CACHE_TTL = 12 * HOUR_IN_SECONDS;
 
@@ -110,6 +110,7 @@ class GitHubClient {
 			'url'          => (string) ( $body['html_url'] ?? '' ),
 			'changelog'    => (string) ( $body['body'] ?? '' ),
 			'package'      => $this->resolve_package_url( $body ),
+			'asset_id'     => $this->resolve_asset_id( $body ),
 			'published_at' => (string) ( $body['published_at'] ?? '' ),
 		);
 
@@ -276,40 +277,110 @@ class GitHubClient {
 	}
 
 	/**
+	 * Download a release asset to a temporary file.
+	 *
+	 * @param string $package Package or asset API URL.
+	 * @return string|\WP_Error Path to the downloaded archive.
+	 */
+	public function download_release_asset( string $package ) {
+		$download_url = $this->resolve_download_url( $package );
+
+		$response = wp_remote_get(
+			$download_url,
+			array(
+				'timeout'     => 300,
+				'redirection' => 5,
+				'headers'     => array(
+					'Authorization'        => $this->get_authorization_header(),
+					'Accept'               => 'application/octet-stream',
+					'X-GitHub-Api-Version' => '2022-11-28',
+					'User-Agent'           => 'CINQ-Theme-Update-Checker/' . CINQ_THEME_UPDATE_CHECKER_VERSION,
+				),
+				'sslverify'   => (bool) apply_filters( 'cinq_theme_update_checker_sslverify', true ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$status_code = (int) wp_remote_retrieve_response_code( $response );
+
+		if ( 200 !== $status_code ) {
+			return new \WP_Error(
+				'cinq_theme_update_checker_download_failed',
+				sprintf(
+					/* translators: 1: HTTP status code, 2: download URL */
+					__( 'Theme download failed with HTTP status %1$d (%2$s).', 'cinq-theme-update-checker' ),
+					$status_code,
+					$download_url
+				)
+			);
+		}
+
+		$filename = wp_tempnam( $download_url );
+
+		if ( ! $filename ) {
+			return new \WP_Error(
+				'cinq_theme_update_checker_temp_file',
+				__( 'Could not create a temporary file for the theme download.', 'cinq-theme-update-checker' )
+			);
+		}
+
+		$written = file_put_contents( $filename, wp_remote_retrieve_body( $response ) );
+
+		if ( false === $written ) {
+			return new \WP_Error(
+				'cinq_theme_update_checker_write_failed',
+				__( 'Could not write the downloaded theme archive.', 'cinq-theme-update-checker' )
+			);
+		}
+
+		return $filename;
+	}
+
+	/**
+	 * Resolve the best download URL for a release asset.
+	 *
+	 * @param string $package Stored package URL.
+	 */
+	public function resolve_download_url( string $package ): string {
+		if ( str_contains( $package, 'api.github.com/repos/' ) && str_contains( $package, '/releases/assets/' ) ) {
+			return $package;
+		}
+
+		$release = $this->get_latest_release();
+
+		if ( is_array( $release ) && ! empty( $release['asset_id'] ) ) {
+			return sprintf(
+				'https://api.github.com/repos/%s/releases/assets/%d',
+				$this->config->get_repository(),
+				(int) $release['asset_id']
+			);
+		}
+
+		return $package;
+	}
+
+	/**
 	 * Resolve the ZIP download URL from release metadata.
 	 *
 	 * @param array<string, mixed> $release GitHub release payload.
 	 */
 	private function resolve_package_url( array $release ): string {
-		$zip_filename = $this->config->get_zip_filename();
-		$assets       = $release['assets'] ?? array();
+		$asset_id = $this->resolve_asset_id( $release );
 
-		if ( is_array( $assets ) ) {
-			foreach ( $assets as $asset ) {
-				if ( ! is_array( $asset ) ) {
-					continue;
-				}
-
-				if ( ( $asset['name'] ?? '' ) === $zip_filename && ! empty( $asset['browser_download_url'] ) ) {
-					return (string) $asset['browser_download_url'];
-				}
-			}
-
-			foreach ( $assets as $asset ) {
-				if ( ! is_array( $asset ) ) {
-					continue;
-				}
-
-				$name = (string) ( $asset['name'] ?? '' );
-
-				if ( str_ends_with( $name, '.zip' ) && ! empty( $asset['browser_download_url'] ) ) {
-					return (string) $asset['browser_download_url'];
-				}
-			}
+		if ( null !== $asset_id ) {
+			return sprintf(
+				'https://api.github.com/repos/%s/releases/assets/%d',
+				$this->config->get_repository(),
+				$asset_id
+			);
 		}
 
-		$repository = $this->config->get_repository();
-		$tag_name   = (string) ( $release['tag_name'] ?? '' );
+		$zip_filename = $this->config->get_zip_filename();
+		$repository   = $this->config->get_repository();
+		$tag_name     = (string) ( $release['tag_name'] ?? '' );
 
 		return sprintf(
 			'https://github.com/%s/releases/download/%s/%s',
@@ -317,5 +388,43 @@ class GitHubClient {
 			rawurlencode( $tag_name ),
 			rawurlencode( $zip_filename )
 		);
+	}
+
+	/**
+	 * Find the release asset ID for the configured ZIP filename.
+	 *
+	 * @param array<string, mixed> $release GitHub release payload.
+	 */
+	private function resolve_asset_id( array $release ): ?int {
+		$zip_filename = $this->config->get_zip_filename();
+		$assets       = $release['assets'] ?? array();
+
+		if ( ! is_array( $assets ) ) {
+			return null;
+		}
+
+		foreach ( $assets as $asset ) {
+			if ( ! is_array( $asset ) || empty( $asset['id'] ) ) {
+				continue;
+			}
+
+			if ( ( $asset['name'] ?? '' ) === $zip_filename ) {
+				return (int) $asset['id'];
+			}
+		}
+
+		foreach ( $assets as $asset ) {
+			if ( ! is_array( $asset ) || empty( $asset['id'] ) ) {
+				continue;
+			}
+
+			$name = (string) ( $asset['name'] ?? '' );
+
+			if ( str_ends_with( $name, '.zip' ) ) {
+				return (int) $asset['id'];
+			}
+		}
+
+		return null;
 	}
 }
