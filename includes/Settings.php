@@ -156,7 +156,7 @@ class Settings {
 								id="repository"
 								name="repository"
 								value="<?php echo esc_attr( $settings['repository'] ); ?>"
-								placeholder="agencecinq/nexiode"
+								placeholder="owner/my-theme"
 							/>
 							<p class="description">
 								<?php
