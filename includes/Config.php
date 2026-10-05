@@ -2,17 +2,17 @@
 /**
  * Plugin configuration.
  *
- * @package CinqThemeUpdateChecker
+ * @package CinqWpThemeUpdates
  */
 
-namespace CinqThemeUpdateChecker;
+namespace CinqWpThemeUpdates;
 
 /**
  * Resolves theme slug, GitHub repo, token and related settings.
  */
 class Config {
 
-	public const OPTION_KEY = 'cinq_theme_update_checker_settings';
+	public const OPTION_KEY = 'cinq_wp_theme_updates_settings';
 
 	/**
 	 * Cached settings array.
@@ -28,12 +28,12 @@ class Config {
 		$slug = $this->get_setting( 'theme_slug' );
 
 		if ( '' !== $slug ) {
-			return (string) apply_filters( 'cinq_theme_update_checker_slug', $slug );
+			return (string) apply_filters( 'cinq_wp_theme_updates_slug', $slug );
 		}
 
 		$slug = get_stylesheet();
 
-		return (string) apply_filters( 'cinq_theme_update_checker_slug', $slug );
+		return (string) apply_filters( 'cinq_wp_theme_updates_slug', $slug );
 	}
 
 	/**
@@ -43,12 +43,12 @@ class Config {
 		$repository = $this->get_setting( 'repository' );
 
 		if ( '' !== $repository ) {
-			return (string) apply_filters( 'cinq_theme_update_checker_repo', $repository );
+			return (string) apply_filters( 'cinq_wp_theme_updates_repo', $repository );
 		}
 
 		$repository = $this->parse_repository_from_theme_uri( $this->get_theme()->get( 'ThemeURI' ) );
 
-		return (string) apply_filters( 'cinq_theme_update_checker_repo', $repository );
+		return (string) apply_filters( 'cinq_wp_theme_updates_repo', $repository );
 	}
 
 	/**
@@ -56,10 +56,10 @@ class Config {
 	 */
 	public function get_token(): string {
 		if ( defined( 'CINQ_THEME_UPDATE_GITHUB_TOKEN' ) && '' !== CINQ_THEME_UPDATE_GITHUB_TOKEN ) {
-			return (string) apply_filters( 'cinq_theme_update_checker_token', $this->sanitize_token( CINQ_THEME_UPDATE_GITHUB_TOKEN ) );
+			return (string) apply_filters( 'cinq_wp_theme_updates_token', $this->sanitize_token( CINQ_THEME_UPDATE_GITHUB_TOKEN ) );
 		}
 
-		return (string) apply_filters( 'cinq_theme_update_checker_token', $this->sanitize_token( $this->get_setting( 'github_token' ) ) );
+		return (string) apply_filters( 'cinq_wp_theme_updates_token', $this->sanitize_token( $this->get_setting( 'github_token' ) ) );
 	}
 
 	/**
@@ -72,7 +72,7 @@ class Config {
 			$prefix = 'v';
 		}
 
-		return (string) apply_filters( 'cinq_theme_update_checker_tag_prefix', $prefix );
+		return (string) apply_filters( 'cinq_wp_theme_updates_tag_prefix', $prefix );
 	}
 
 	/**
@@ -85,7 +85,7 @@ class Config {
 			$filename = $this->get_theme_slug() . '.zip';
 		}
 
-		return (string) apply_filters( 'cinq_theme_update_checker_zip_filename', $filename );
+		return (string) apply_filters( 'cinq_wp_theme_updates_zip_filename', $filename );
 	}
 
 	/**
@@ -120,11 +120,11 @@ class Config {
 		update_option(
 			self::OPTION_KEY,
 			array(
-				'theme_slug'    => sanitize_key( $settings['theme_slug'] ?? '' ),
-				'repository'    => $this->sanitize_repository( $settings['repository'] ?? '' ),
-				'github_token'  => $this->sanitize_token( $settings['github_token'] ?? '' ),
-				'tag_prefix'    => sanitize_text_field( $settings['tag_prefix'] ?? 'v' ),
-				'zip_filename'  => sanitize_file_name( $settings['zip_filename'] ?? '' ),
+				'theme_slug'   => sanitize_key( $settings['theme_slug'] ?? '' ),
+				'repository'   => $this->sanitize_repository( $settings['repository'] ?? '' ),
+				'github_token' => $this->sanitize_token( $settings['github_token'] ?? '' ),
+				'tag_prefix'   => sanitize_text_field( $settings['tag_prefix'] ?? 'v' ),
+				'zip_filename' => sanitize_file_name( $settings['zip_filename'] ?? '' ),
 			),
 			false
 		);
@@ -141,12 +141,12 @@ class Config {
 		$stored_token = $this->get_setting( 'github_token' );
 
 		return array(
-			'theme_slug'        => $this->get_setting( 'theme_slug' ),
-			'repository'        => $this->get_setting( 'repository' ),
-			'github_token'      => $this->has_constant_token() ? '' : $stored_token,
-			'has_stored_token'  => ! $this->has_constant_token() && '' !== $stored_token,
-			'tag_prefix'        => $this->get_setting( 'tag_prefix' ) ?: 'v',
-			'zip_filename'      => $this->get_setting( 'zip_filename' ),
+			'theme_slug'       => $this->get_setting( 'theme_slug' ),
+			'repository'       => $this->get_setting( 'repository' ),
+			'github_token'     => $this->has_constant_token() ? '' : $stored_token,
+			'has_stored_token' => ! $this->has_constant_token() && '' !== $stored_token,
+			'tag_prefix'       => '' !== $this->get_setting( 'tag_prefix' ) ? $this->get_setting( 'tag_prefix' ) : 'v',
+			'zip_filename'     => $this->get_setting( 'zip_filename' ),
 		);
 	}
 
@@ -159,6 +159,8 @@ class Config {
 
 	/**
 	 * Read a single stored setting.
+	 *
+	 * @param string $key Setting key.
 	 */
 	private function get_setting( string $key ): string {
 		$settings = $this->get_settings();

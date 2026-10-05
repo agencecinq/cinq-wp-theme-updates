@@ -2,18 +2,18 @@
 /**
  * GitHub API client.
  *
- * @package CinqThemeUpdateChecker
+ * @package CinqWpThemeUpdates
  */
 
-namespace CinqThemeUpdateChecker;
+namespace CinqWpThemeUpdates;
 
 /**
  * Fetches release metadata from GitHub.
  */
 class GitHubClient {
 
-	private const CACHE_KEY = 'cinq_theme_update_checker_release_v2';
-	private const ERROR_KEY = 'cinq_theme_update_checker_last_error';
+	private const CACHE_KEY = 'cinq_wp_theme_updates_release_v2';
+	private const ERROR_KEY = 'cinq_wp_theme_updates_last_error';
 	private const CACHE_TTL = 12 * HOUR_IN_SECONDS;
 
 	/**
@@ -43,7 +43,7 @@ class GitHubClient {
 	 */
 	public function fetch_latest_release(): array {
 		if ( ! $this->config->is_configured() ) {
-			$error = __( 'Repository and GitHub token are required.', 'cinq-theme-update-checker' );
+			$error = __( 'Repository and GitHub token are required.', 'cinq-wp-theme-updates' );
 
 			$this->store_error( $error );
 
@@ -94,7 +94,7 @@ class GitHubClient {
 		$body = $response['body'];
 
 		if ( ! is_array( $body ) || empty( $body['tag_name'] ) ) {
-			$error = __( 'GitHub returned an unexpected release response.', 'cinq-theme-update-checker' );
+			$error = __( 'GitHub returned an unexpected release response.', 'cinq-wp-theme-updates' );
 
 			$this->store_error( $error );
 
@@ -151,7 +151,7 @@ class GitHubClient {
 			'Authorization'        => $this->get_authorization_header(),
 			'Accept'               => 'application/vnd.github+json',
 			'X-GitHub-Api-Version' => '2022-11-28',
-			'User-Agent'           => 'CINQ-Theme-Update-Checker/' . CINQ_THEME_UPDATE_CHECKER_VERSION,
+			'User-Agent'           => 'CINQ-Theme-Updates/' . CINQ_WP_THEME_UPDATES_VERSION,
 		);
 	}
 
@@ -180,7 +180,7 @@ class GitHubClient {
 			array(
 				'timeout'   => 15,
 				'headers'   => $this->get_headers(),
-				'sslverify' => (bool) apply_filters( 'cinq_theme_update_checker_sslverify', true ),
+				'sslverify' => (bool) apply_filters( 'cinq_wp_theme_updates_sslverify', true ),
 			)
 		);
 
@@ -224,24 +224,24 @@ class GitHubClient {
 		}
 
 		if ( '' === $message ) {
-			$message = __( 'GitHub API request failed.', 'cinq-theme-update-checker' );
+			$message = __( 'GitHub API request failed.', 'cinq-wp-theme-updates' );
 		}
 
 		if ( 404 === $status_code ) {
-			$message .= ' ' . __( 'Check that the repository exists and the token can access it.', 'cinq-theme-update-checker' );
+			$message .= ' ' . __( 'Check that the repository exists and the token can access it.', 'cinq-wp-theme-updates' );
 		}
 
 		if ( 401 === $status_code ) {
-			$message .= ' ' . __( 'The token is invalid or expired.', 'cinq-theme-update-checker' );
+			$message .= ' ' . __( 'The token is invalid or expired.', 'cinq-wp-theme-updates' );
 		}
 
 		if ( 403 === $status_code && is_array( $body ) && str_contains( (string) ( $body['message'] ?? '' ), 'SAML' ) ) {
-			$message .= ' ' . __( 'Authorize the token for your GitHub organization SSO.', 'cinq-theme-update-checker' );
+			$message .= ' ' . __( 'Authorize the token for your GitHub organization SSO.', 'cinq-wp-theme-updates' );
 		}
 
 		return sprintf(
 			/* translators: 1: HTTP status code, 2: error message */
-			__( 'GitHub API error %1$d: %2$s', 'cinq-theme-update-checker' ),
+			__( 'GitHub API error %1$d: %2$s', 'cinq-wp-theme-updates' ),
 			$status_code,
 			$message
 		);
@@ -294,9 +294,9 @@ class GitHubClient {
 					'Authorization'        => $this->get_authorization_header(),
 					'Accept'               => 'application/octet-stream',
 					'X-GitHub-Api-Version' => '2022-11-28',
-					'User-Agent'           => 'CINQ-Theme-Update-Checker/' . CINQ_THEME_UPDATE_CHECKER_VERSION,
+					'User-Agent'           => 'CINQ-Theme-Updates/' . CINQ_WP_THEME_UPDATES_VERSION,
 				),
-				'sslverify'   => (bool) apply_filters( 'cinq_theme_update_checker_sslverify', true ),
+				'sslverify'   => (bool) apply_filters( 'cinq_wp_theme_updates_sslverify', true ),
 			)
 		);
 
@@ -308,10 +308,10 @@ class GitHubClient {
 
 		if ( 200 !== $status_code ) {
 			return new \WP_Error(
-				'cinq_theme_update_checker_download_failed',
+				'cinq_wp_theme_updates_download_failed',
 				sprintf(
 					/* translators: 1: HTTP status code, 2: download URL */
-					__( 'Theme download failed with HTTP status %1$d (%2$s).', 'cinq-theme-update-checker' ),
+					__( 'Theme download failed with HTTP status %1$d (%2$s).', 'cinq-wp-theme-updates' ),
 					$status_code,
 					$download_url
 				)
@@ -322,17 +322,18 @@ class GitHubClient {
 
 		if ( ! $filename ) {
 			return new \WP_Error(
-				'cinq_theme_update_checker_temp_file',
-				__( 'Could not create a temporary file for the theme download.', 'cinq-theme-update-checker' )
+				'cinq_wp_theme_updates_temp_file',
+				__( 'Could not create a temporary file for the theme download.', 'cinq-wp-theme-updates' )
 			);
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Temporary file created by wp_tempnam, outside the WordPress filesystem.
 		$written = file_put_contents( $filename, wp_remote_retrieve_body( $response ) );
 
 		if ( false === $written ) {
 			return new \WP_Error(
-				'cinq_theme_update_checker_write_failed',
-				__( 'Could not write the downloaded theme archive.', 'cinq-theme-update-checker' )
+				'cinq_wp_theme_updates_write_failed',
+				__( 'Could not write the downloaded theme archive.', 'cinq-wp-theme-updates' )
 			);
 		}
 

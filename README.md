@@ -1,6 +1,8 @@
-# CINQ Theme Update Checker
+# CINQ Theme Updates
 
-WordPress plugin to check for theme updates from private GitHub releases and install them from the admin.
+WordPress plugin that installs theme updates from private GitHub releases. Settings screen, no front-end markup.
+
+**Repository:** [`agencecinq/cinq-wp-theme-updates`](https://github.com/agencecinq/cinq-wp-theme-updates)
 
 ## Requirements
 
@@ -8,11 +10,23 @@ WordPress plugin to check for theme updates from private GitHub releases and ins
 - PHP 8.1+
 - A GitHub personal access token with read access to the theme repository
 
-## Installation
+## Lint (WordPress Coding Standards)
 
-1. Copy the plugin folder to `wp-content/plugins/cinq-theme-update-checker`
-2. Activate **CINQ Theme Update Checker** in the WordPress admin
-3. Configure the plugin under **Settings → CINQ Theme Updates**
+```bash
+composer install
+composer lint          # phpcs
+composer lint:fix     # phpcbf (auto-fix)
+```
+
+Use `./vendor/bin/phpcs`, not the global `phpcs` binary — the global install does not register the WordPress standards.
+
+## Install
+
+Copy the plugin folder to `wp-content/plugins/cinq-wp-theme-updates` and activate **CINQ Theme Updates** in the WordPress admin. It then appears in the plugin list and stays off until activated.
+
+Replace that folder when the plugin changes.
+
+Configure it under **Settings → CINQ Theme Updates**.
 
 ## Configuration
 
@@ -24,27 +38,22 @@ WordPress plugin to check for theme updates from private GitHub releases and ins
 - **Tag prefix** — prefix stripped from release tags before version comparison (default: `v`)
 - **ZIP filename** — release asset name (default: `{theme-slug}.zip`)
 
-### wp-config.php (recommended for production)
+### wp-config.php
 
 ```php
 define( 'CINQ_THEME_UPDATE_GITHUB_TOKEN', 'ghp_your_token' );
 ```
 
-Optional overrides:
+When this constant is set, the settings screen does not store a token.
+
+### Optional filters
 
 ```php
-define( 'CINQ_THEME_UPDATE_REPO', 'agencecinq/nexiode' );
-define( 'CINQ_THEME_UPDATE_SLUG', 'nexiode' );
-```
-
-### Filters
-
-```php
-add_filter( 'cinq_theme_update_checker_repo', fn() => 'agencecinq/my-theme' );
-add_filter( 'cinq_theme_update_checker_slug', fn() => 'my-theme' );
-add_filter( 'cinq_theme_update_checker_token', fn() => 'ghp_xxx' );
-add_filter( 'cinq_theme_update_checker_tag_prefix', fn() => 'v' );
-add_filter( 'cinq_theme_update_checker_zip_filename', fn() => 'my-theme.zip' );
+add_filter( 'cinq_wp_theme_updates_repo', fn () => 'agencecinq/my-theme' );
+add_filter( 'cinq_wp_theme_updates_slug', fn () => 'my-theme' );
+add_filter( 'cinq_wp_theme_updates_token', fn () => 'ghp_xxx' );
+add_filter( 'cinq_wp_theme_updates_tag_prefix', fn () => 'v' );
+add_filter( 'cinq_wp_theme_updates_zip_filename', fn () => 'my-theme.zip' );
 ```
 
 ## Theme release workflow
@@ -64,6 +73,8 @@ nexiode.zip
     └── ...
 ```
 
-## License
+## Scope
 
-GPL v2 or later
+- Updates one theme from GitHub releases
+- Settings screen under **Settings → CINQ Theme Updates**
+- No front-end markup, no shortcode

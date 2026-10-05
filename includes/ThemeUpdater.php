@@ -2,10 +2,10 @@
 /**
  * WordPress theme update integration.
  *
- * @package CinqThemeUpdateChecker
+ * @package CinqWpThemeUpdates
  */
 
-namespace CinqThemeUpdateChecker;
+namespace CinqWpThemeUpdates;
 
 /**
  * Injects GitHub release data into the WordPress theme update API.
@@ -102,11 +102,11 @@ class ThemeUpdater {
 			'slug'          => $theme_slug,
 			'version'       => $release['version'],
 			'author'        => $theme->get( 'Author' ),
-			'homepage'      => $release['url'] ?: $theme->get( 'ThemeURI' ),
+			'homepage'      => '' !== $release['url'] ? $release['url'] : $theme->get( 'ThemeURI' ),
 			'download_link' => $release['package'],
 			'sections'      => array(
 				'description' => $theme->get( 'Description' ),
-				'changelog'   => $release['changelog'] ?: __( 'No changelog provided for this release.', 'cinq-theme-update-checker' ),
+				'changelog'   => '' !== $release['changelog'] ? $release['changelog'] : __( 'No changelog provided for this release.', 'cinq-wp-theme-updates' ),
 			),
 			'last_updated'  => $release['published_at'],
 		);
@@ -122,14 +122,16 @@ class ThemeUpdater {
 	 * @return bool|\WP_Error|string
 	 */
 	public function authenticate_download( $reply, string $package, $upgrader, array $hook_extra ) {
+		unset( $upgrader, $hook_extra );
+
 		if ( false !== $reply || ! $this->config->is_github_package( $package ) ) {
 			return $reply;
 		}
 
 		if ( '' === $this->config->get_token() ) {
 			return new \WP_Error(
-				'cinq_theme_update_checker_missing_token',
-				__( 'A GitHub token is required to download theme updates.', 'cinq-theme-update-checker' )
+				'cinq_wp_theme_updates_missing_token',
+				__( 'A GitHub token is required to download theme updates.', 'cinq-wp-theme-updates' )
 			);
 		}
 
