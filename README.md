@@ -42,9 +42,11 @@ Configure it under **Settings → CINQ Theme Updates**.
 
 ```php
 define( 'CINQ_THEME_UPDATE_GITHUB_TOKEN', 'ghp_your_token' );
+define( 'CINQ_THEME_UPDATE_REPO', 'agencecinq/my-theme' );
+define( 'CINQ_THEME_UPDATE_SLUG', 'my-theme' );
 ```
 
-When this constant is set, the settings screen does not store a token.
+`THEME_UPDATE_GITHUB_TOKEN`, `THEME_UPDATE_REPO` and `THEME_UPDATE_SLUG` are accepted as aliases. When a token constant is set, the settings screen does not store a token.
 
 ### Optional filters
 

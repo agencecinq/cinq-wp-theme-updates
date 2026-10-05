@@ -25,13 +25,19 @@ class Config {
 	 * Theme slug to monitor for updates.
 	 */
 	public function get_theme_slug(): string {
-		$slug = $this->get_setting( 'theme_slug' );
+		$slug = $this->defined_string( 'THEME_UPDATE_SLUG' );
 
-		if ( '' !== $slug ) {
-			return (string) apply_filters( 'cinq_wp_theme_updates_slug', $slug );
+		if ( '' === $slug ) {
+			$slug = $this->defined_string( 'CINQ_THEME_UPDATE_SLUG' );
 		}
 
-		$slug = get_stylesheet();
+		if ( '' === $slug ) {
+			$slug = $this->get_setting( 'theme_slug' );
+		}
+
+		if ( '' === $slug ) {
+			$slug = get_stylesheet();
+		}
 
 		return (string) apply_filters( 'cinq_wp_theme_updates_slug', $slug );
 	}
@@ -40,6 +46,16 @@ class Config {
 	 * GitHub repository in owner/repo format.
 	 */
 	public function get_repository(): string {
+		$repository = $this->defined_string( 'THEME_UPDATE_REPO' );
+
+		if ( '' === $repository ) {
+			$repository = $this->defined_string( 'CINQ_THEME_UPDATE_REPO' );
+		}
+
+		if ( '' !== $repository ) {
+			return (string) apply_filters( 'cinq_wp_theme_updates_repo', $this->sanitize_repository( $repository ) );
+		}
+
 		$repository = $this->get_setting( 'repository' );
 
 		if ( '' !== $repository ) {
@@ -55,8 +71,14 @@ class Config {
 	 * GitHub personal access token.
 	 */
 	public function get_token(): string {
-		if ( defined( 'CINQ_THEME_UPDATE_GITHUB_TOKEN' ) && '' !== CINQ_THEME_UPDATE_GITHUB_TOKEN ) {
-			return (string) apply_filters( 'cinq_wp_theme_updates_token', $this->sanitize_token( CINQ_THEME_UPDATE_GITHUB_TOKEN ) );
+		$token = $this->defined_string( 'THEME_UPDATE_GITHUB_TOKEN' );
+
+		if ( '' === $token ) {
+			$token = $this->defined_string( 'CINQ_THEME_UPDATE_GITHUB_TOKEN' );
+		}
+
+		if ( '' !== $token ) {
+			return (string) apply_filters( 'cinq_wp_theme_updates_token', $this->sanitize_token( $token ) );
 		}
 
 		return (string) apply_filters( 'cinq_wp_theme_updates_token', $this->sanitize_token( $this->get_setting( 'github_token' ) ) );
@@ -154,7 +176,34 @@ class Config {
 	 * Whether the token is defined in wp-config.php.
 	 */
 	public function has_constant_token(): bool {
-		return defined( 'CINQ_THEME_UPDATE_GITHUB_TOKEN' ) && '' !== CINQ_THEME_UPDATE_GITHUB_TOKEN;
+		return '' !== $this->defined_string( 'THEME_UPDATE_GITHUB_TOKEN' )
+			|| '' !== $this->defined_string( 'CINQ_THEME_UPDATE_GITHUB_TOKEN' );
+	}
+
+	/**
+	 * Name of the wp-config constant that provides the token.
+	 */
+	public function token_constant_name(): string {
+		if ( '' !== $this->defined_string( 'THEME_UPDATE_GITHUB_TOKEN' ) ) {
+			return 'THEME_UPDATE_GITHUB_TOKEN';
+		}
+
+		return 'CINQ_THEME_UPDATE_GITHUB_TOKEN';
+	}
+
+	/**
+	 * Read a string constant when it is defined and non-empty.
+	 *
+	 * @param string $name Constant name.
+	 */
+	private function defined_string( string $name ): string {
+		if ( ! defined( $name ) ) {
+			return '';
+		}
+
+		$value = constant( $name );
+
+		return is_string( $value ) ? $value : '';
 	}
 
 	/**

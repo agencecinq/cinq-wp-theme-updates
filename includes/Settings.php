@@ -176,7 +176,7 @@ class Settings {
 						<td>
 							<?php if ( $this->config->has_constant_token() ) : ?>
 								<p>
-									<code>CINQ_THEME_UPDATE_GITHUB_TOKEN</code>
+									<code><?php echo esc_html( $this->config->token_constant_name() ); ?></code>
 									<?php esc_html_e( 'is defined in wp-config.php.', 'cinq-wp-theme-updates' ); ?>
 								</p>
 							<?php else : ?>
