@@ -60,7 +60,7 @@ class Settings {
 		$stored_settings = is_array( $stored_settings ) ? $stored_settings : array();
 		$github_token    = isset( $_POST['github_token'] ) ? sanitize_text_field( wp_unslash( $_POST['github_token'] ) ) : '';
 
-		if ( '' === $github_token && ! $this->config->has_constant_token() ) {
+		if ( '' === $github_token ) {
 			$github_token = (string) ( $stored_settings['github_token'] ?? '' );
 		}
 
@@ -174,31 +174,24 @@ class Settings {
 							<label for="github_token"><?php esc_html_e( 'GitHub token', 'cinq-wp-theme-updates' ); ?></label>
 						</th>
 						<td>
-							<?php if ( $this->config->has_constant_token() ) : ?>
-								<p>
-									<code><?php echo esc_html( $this->config->token_constant_name() ); ?></code>
-									<?php esc_html_e( 'is defined in wp-config.php.', 'cinq-wp-theme-updates' ); ?>
-								</p>
-							<?php else : ?>
-								<input
-									type="password"
-									class="regular-text"
-									id="github_token"
-									name="github_token"
-									value=""
-									autocomplete="off"
-									placeholder="<?php esc_attr_e( 'ghp_...', 'cinq-wp-theme-updates' ); ?>"
-								/>
-								<p class="description">
-									<?php
-									if ( ! empty( $settings['has_stored_token'] ) ) {
-										esc_html_e( 'A token is saved. Leave empty to keep the current token.', 'cinq-wp-theme-updates' );
-										echo ' ';
-									}
-									esc_html_e( 'Fine-grained token with read access to the repository contents, or a classic token with repo scope.', 'cinq-wp-theme-updates' );
-									?>
-								</p>
-							<?php endif; ?>
+							<input
+								type="password"
+								class="regular-text"
+								id="github_token"
+								name="github_token"
+								value=""
+								autocomplete="off"
+								placeholder="<?php esc_attr_e( 'ghp_...', 'cinq-wp-theme-updates' ); ?>"
+							/>
+							<p class="description">
+								<?php
+								if ( ! empty( $settings['has_stored_token'] ) ) {
+									esc_html_e( 'A token is saved. Leave empty to keep the current token.', 'cinq-wp-theme-updates' );
+									echo ' ';
+								}
+								esc_html_e( 'Fine-grained token with read access to the repository contents, or a classic token with repo scope.', 'cinq-wp-theme-updates' );
+								?>
+							</p>
 						</td>
 					</tr>
 					<tr>
@@ -248,9 +241,7 @@ class Settings {
 				<li>
 					<strong><?php esc_html_e( 'GitHub token', 'cinq-wp-theme-updates' ); ?>:</strong>
 					<?php
-					if ( $this->config->has_constant_token() ) {
-						esc_html_e( 'Configured via wp-config.php', 'cinq-wp-theme-updates' );
-					} elseif ( ! empty( $settings['has_stored_token'] ) ) {
+					if ( ! empty( $settings['has_stored_token'] ) ) {
 						esc_html_e( 'Saved in plugin settings', 'cinq-wp-theme-updates' );
 					} else {
 						esc_html_e( 'Missing', 'cinq-wp-theme-updates' );

@@ -22,7 +22,6 @@
 			<property name="prefixes" type="array">
 				<element value="cinq"/>
 				<element value="CINQ_WP_THEME_UPDATES"/>
-				<element value="CINQ_THEME_UPDATE"/>
 			</property>
 		</properties>
 	</rule>

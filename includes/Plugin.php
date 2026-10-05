@@ -18,8 +18,6 @@ class Plugin {
 	 * @return void
 	 */
 	public function run(): void {
-		$this->migrate_legacy_options();
-
 		$config = new Config();
 		$github = new GitHubClient( $config );
 
@@ -27,25 +25,6 @@ class Plugin {
 
 		( new ThemeUpdater( $config, $github ) )->register();
 		( new Settings( $config ) )->register();
-	}
-
-	/**
-	 * Copy settings saved under the previous plugin slug.
-	 *
-	 * @return void
-	 */
-	private function migrate_legacy_options(): void {
-		if ( false !== get_option( 'cinq_wp_theme_updates_settings', false ) ) {
-			return;
-		}
-
-		$legacy = get_option( 'cinq_theme_update_checker_settings', false );
-
-		if ( ! is_array( $legacy ) ) {
-			return;
-		}
-
-		update_option( 'cinq_wp_theme_updates_settings', $legacy, false );
 	}
 
 	/**

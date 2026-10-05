@@ -38,16 +38,6 @@ Configure it under **Settings → CINQ Theme Updates**.
 - **Tag prefix** — prefix stripped from release tags before version comparison (default: `v`)
 - **ZIP filename** — release asset name (default: `{theme-slug}.zip`)
 
-### wp-config.php
-
-```php
-define( 'CINQ_THEME_UPDATE_GITHUB_TOKEN', 'ghp_your_token' );
-define( 'CINQ_THEME_UPDATE_REPO', 'agencecinq/my-theme' );
-define( 'CINQ_THEME_UPDATE_SLUG', 'my-theme' );
-```
-
-`THEME_UPDATE_GITHUB_TOKEN`, `THEME_UPDATE_REPO` and `THEME_UPDATE_SLUG` are accepted as aliases. When a token constant is set, the settings screen does not store a token.
-
 ### Optional filters
 
 ```php
