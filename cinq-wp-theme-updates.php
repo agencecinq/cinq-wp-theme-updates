@@ -3,7 +3,7 @@
  * Plugin Name: CINQ Theme Updates
  * Plugin URI: https://github.com/agencecinq/cinq-wp-theme-updates
  * Description: Installs theme updates from private GitHub releases. Settings screen, no front-end markup.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: CINQ
  * Author URI: https://agencecinq.com/
  * Requires at least: 6.0
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CINQ_WP_THEME_UPDATES_VERSION', '1.1.0' );
+define( 'CINQ_WP_THEME_UPDATES_VERSION', '1.2.0' );
 define( 'CINQ_WP_THEME_UPDATES_FILE', __FILE__ );
 define( 'CINQ_WP_THEME_UPDATES_PATH', plugin_dir_path( __FILE__ ) );
 
