@@ -175,12 +175,20 @@ class GitHubClient {
 	 * @return array{status_code: int, body: mixed, error: string|null}
 	 */
 	private function request( string $url ): array {
-		$response = wp_remote_get(
+		/**
+		 * Filters whether the requests to GitHub verify its SSL certificate.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param bool $sslverify Default true.
+		 */
+		$sslverify = (bool) apply_filters( 'cinq_wp_theme_updates_sslverify', true );
+		$response  = wp_remote_get(
 			$url,
 			array(
 				'timeout'   => 15,
 				'headers'   => $this->get_headers(),
-				'sslverify' => (bool) apply_filters( 'cinq_wp_theme_updates_sslverify', true ),
+				'sslverify' => $sslverify,
 			)
 		);
 
@@ -285,7 +293,9 @@ class GitHubClient {
 	public function download_release_asset( string $package ) {
 		$download_url = $this->resolve_download_url( $package );
 
-		$response = wp_remote_get(
+		/** This filter is documented in includes/GitHubClient.php */
+		$sslverify = (bool) apply_filters( 'cinq_wp_theme_updates_sslverify', true );
+		$response  = wp_remote_get(
 			$download_url,
 			array(
 				'timeout'     => 300,
@@ -296,7 +306,7 @@ class GitHubClient {
 					'X-GitHub-Api-Version' => '2022-11-28',
 					'User-Agent'           => 'CINQ-Theme-Updates/' . CINQ_WP_THEME_UPDATES_VERSION,
 				),
-				'sslverify'   => (bool) apply_filters( 'cinq_wp_theme_updates_sslverify', true ),
+				'sslverify'   => $sslverify,
 			)
 		);
 

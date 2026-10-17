@@ -31,6 +31,13 @@ class Config {
 			$slug = get_stylesheet();
 		}
 
+		/**
+		 * Filters the slug of the theme to check for updates.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param string $slug Theme slug. Default the setting, or the active theme.
+		 */
 		return (string) apply_filters( 'cinq_wp_theme_updates_slug', $slug );
 	}
 
@@ -40,12 +47,17 @@ class Config {
 	public function get_repository(): string {
 		$repository = $this->get_setting( 'repository' );
 
-		if ( '' !== $repository ) {
-			return (string) apply_filters( 'cinq_wp_theme_updates_repo', $repository );
+		if ( '' === $repository ) {
+			$repository = $this->parse_repository_from_theme_uri( $this->get_theme()->get( 'ThemeURI' ) );
 		}
 
-		$repository = $this->parse_repository_from_theme_uri( $this->get_theme()->get( 'ThemeURI' ) );
-
+		/**
+		 * Filters the GitHub repository the theme updates come from.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param string $repository Repository as owner/repo. Default the setting, or the repository of the theme's Theme URI.
+		 */
 		return (string) apply_filters( 'cinq_wp_theme_updates_repo', $repository );
 	}
 
@@ -53,7 +65,16 @@ class Config {
 	 * GitHub personal access token.
 	 */
 	public function get_token(): string {
-		return (string) apply_filters( 'cinq_wp_theme_updates_token', $this->sanitize_token( $this->get_setting( 'github_token' ) ) );
+		$token = $this->sanitize_token( $this->get_setting( 'github_token' ) );
+
+		/**
+		 * Filters the GitHub personal access token sent with the requests.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param string $token Token. Default the setting.
+		 */
+		return (string) apply_filters( 'cinq_wp_theme_updates_token', $token );
 	}
 
 	/**
@@ -66,6 +87,13 @@ class Config {
 			$prefix = 'v';
 		}
 
+		/**
+		 * Filters the prefix removed from release tags before comparing versions.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param string $prefix Tag prefix. Default the setting, or 'v'.
+		 */
 		return (string) apply_filters( 'cinq_wp_theme_updates_tag_prefix', $prefix );
 	}
 
@@ -79,6 +107,13 @@ class Config {
 			$filename = $this->get_theme_slug() . '.zip';
 		}
 
+		/**
+		 * Filters the name of the release asset to install.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param string $filename Asset file name. Default the setting, or the theme slug followed by .zip.
+		 */
 		return (string) apply_filters( 'cinq_wp_theme_updates_zip_filename', $filename );
 	}
 
