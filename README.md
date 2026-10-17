@@ -84,3 +84,7 @@ WordPress compares the release version to `style.css` and shows the update under
 - One theme per site, from GitHub releases
 - Settings screen under **Settings → CINQ Theme Updates**
 - No front-end markup, no shortcode, no front-end assets
+
+## License
+
+MIT © [CINQ](https://agencecinq.com)

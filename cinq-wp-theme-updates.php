@@ -8,6 +8,8 @@
  * Author URI: https://agencecinq.com/
  * Requires at least: 6.0
  * Requires PHP: 8.1
+ * License: MIT
+ * License URI: https://opensource.org/licenses/MIT
  * Text Domain: cinq-wp-theme-updates
  *
  * @package CinqWpThemeUpdates
