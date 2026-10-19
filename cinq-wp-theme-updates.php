@@ -10,6 +10,7 @@
  * Requires PHP: 8.1
  * License: MIT
  * License URI: https://opensource.org/licenses/MIT
+ * Update URI: https://github.com/agencecinq/cinq-wp-theme-updates
  * Text Domain: cinq-wp-theme-updates
  *
  * @package CinqWpThemeUpdates
@@ -25,6 +26,7 @@ require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/Plugin.php';
 require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/Config.php';
 require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/GitHubClient.php';
 require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/ThemeUpdater.php';
+require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/PluginUpdater.php';
 require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/Settings.php';
 
 ( new CinqWpThemeUpdates\Plugin() )->run();

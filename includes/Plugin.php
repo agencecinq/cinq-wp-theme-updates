@@ -24,6 +24,7 @@ class Plugin {
 		$this->maybe_clear_caches( $config, $github );
 
 		( new ThemeUpdater( $config, $github ) )->register();
+		( new PluginUpdater( plugin_basename( CINQ_WP_THEME_UPDATES_FILE ) ) )->register();
 		( new Settings( $config ) )->register();
 	}
 
