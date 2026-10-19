@@ -24,7 +24,18 @@ Use `./vendor/bin/phpcs`, not the global `phpcs` binary — the global install d
 
 Copy the plugin folder to `wp-content/plugins/cinq-wp-theme-updates` and activate **CINQ Theme Updates** in the WordPress admin. It then appears in the plugin list and stays off until activated.
 
-Replace that folder when the plugin changes.
+## Updates
+
+The plugin updates from the latest release of [agencecinq/cinq-wp-theme-updates](https://github.com/agencecinq/cinq-wp-theme-updates/releases), like any other plugin in **Dashboard → Updates**. The `Update URI` header routes the check to GitHub instead of WordPress.org. Versions before 1.3.0 do not update themselves: install 1.3.0 by hand once, later versions update as usual.
+
+To publish a release:
+
+1. Bump `Version` and `CINQ_WP_THEME_UPDATES_VERSION` in `cinq-wp-theme-updates.php`.
+2. Commit, push, then create the release: `gh release create v1.3.0 --notes "…"`. The tag may start with `v`. The release notes are the changelog of the plugin details.
+
+WordPress installs the archive GitHub builds from the tag; `.gitattributes` leaves the development files out of it.
+
+No update is offered when the plugin folder is a Git working copy, since updating replaces the whole folder.
 
 ## Settings
 

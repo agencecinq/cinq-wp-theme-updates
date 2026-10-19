@@ -136,8 +136,9 @@ class Config {
 			return false;
 		}
 
-		return str_contains( $package, 'github.com/' . $repository )
-			|| str_contains( $package, 'api.github.com/repos/' . $repository );
+		// Trailing slash: owner/theme must not match owner/theme-updates, this plugin's own package.
+		return str_contains( $package, 'github.com/' . $repository . '/' )
+			|| str_contains( $package, 'api.github.com/repos/' . $repository . '/' );
 	}
 
 	/**
