@@ -26,14 +26,20 @@ Copy the plugin folder to `wp-content/plugins/cinq-wp-theme-updates` and activat
 
 ## Updates
 
-The plugin updates from the latest release of [agencecinq/cinq-wp-theme-updates](https://github.com/agencecinq/cinq-wp-theme-updates/releases), like any other plugin in **Dashboard → Updates**. The `Update URI` header routes the check to GitHub instead of WordPress.org. Versions before 1.3.0 do not update themselves: install 1.3.0 by hand once, later versions update as usual.
+The plugin updates from the latest release of [agencecinq/cinq-wp-theme-updates](https://github.com/agencecinq/cinq-wp-theme-updates/releases), like any other plugin in **Dashboard → Updates**, and installs new releases on its own (auto-updates). The `Update URI` header routes the check to GitHub instead of WordPress.org. Versions before 1.3.0 do not update themselves: install 1.3.0 by hand once, later versions update as usual.
+
+The check reads the `update.json` attached to the latest release, a plain download GitHub does not rate-limit, and falls back to the GitHub API. The release is cached twelve hours; **Check again** on the Updates screen reads it again. The `cinq_wp_theme_updates_auto_update` filter turns auto-updates off:
+
+```php
+add_filter( 'cinq_wp_theme_updates_auto_update', '__return_false' );
+```
 
 To publish a release:
 
 1. Bump `Version` and `CINQ_WP_THEME_UPDATES_VERSION` in `cinq-wp-theme-updates.php`.
-2. Commit, push, then create the release: `gh release create v1.3.0 --notes "…"`. The tag may start with `v`. The release notes are the changelog of the plugin details.
+2. Commit, push, then push a tag: `git tag v1.4.0 && git push origin v1.4.0`.
 
-WordPress installs the archive GitHub builds from the tag; `.gitattributes` leaves the development files out of it.
+The release workflow checks that the tag matches both versions, builds `cinq-wp-theme-updates.zip` with `git archive` (`.gitattributes` leaves the development files out) and attaches it to the release with `update.json`.
 
 No update is offered when the plugin folder is a Git working copy, since updating replaces the whole folder.
 
