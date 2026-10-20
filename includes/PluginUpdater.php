@@ -8,17 +8,44 @@
 namespace CinqWpThemeUpdates;
 
 /**
- * Offers the latest GitHub release of this plugin as a plugin update.
+ * Offers updates from the latest GitHub release, like any other plugin, and
+ * installs them on its own.
  *
- * WordPress calls update_plugins_{hostname} for plugins whose Update URI header
- * points to that host, then compares the returned version with the installed one.
+ * The plugin is distributed on GitHub only. Its `Update URI` header points
+ * there, which makes WordPress skip WordPress.org and ask the
+ * `update_plugins_github.com` filter instead. That filter reads the latest
+ * release (cached twelve hours) and hands WordPress the zip the release
+ * workflow attaches to it.
+ *
+ * The release is read from the `update.json` the workflow attaches next to the
+ * zip: a plain download, which GitHub does not rate-limit, where its API
+ * allows sixty calls an hour per address and shared hosting puts many sites
+ * behind one. The API stays as a fallback for releases without the file.
+ *
+ * Auto-updates are on: WordPress installs a new release with its own updates,
+ * twice a day. The `cinq_wp_theme_updates_auto_update` filter turns them off.
  */
 class PluginUpdater {
 
 	/**
-	 * Site transient holding the latest release.
+	 * Repository, `owner/name`.
 	 */
-	private const CACHE_KEY = 'cinq_wp_theme_updates_plugin_release';
+	public const REPOSITORY = 'agencecinq/cinq-wp-theme-updates';
+
+	/**
+	 * Name of the zip attached to each release.
+	 */
+	public const ASSET = 'cinq-wp-theme-updates.zip';
+
+	/**
+	 * Name of the release manifest attached to each release.
+	 */
+	public const MANIFEST = 'update.json';
+
+	/**
+	 * Transient caching the latest release.
+	 */
+	private const TRANSIENT = 'cinq_wp_theme_updates_latest_release';
 
 	/**
 	 * Constructor.
@@ -31,24 +58,99 @@ class PluginUpdater {
 
 	/**
 	 * Register WordPress hooks.
+	 *
+	 * @return void
 	 */
 	public function register(): void {
-		add_filter( 'update_plugins_github.com', array( $this, 'check_update' ), 10, 3 );
-		add_filter( 'plugins_api', array( $this, 'plugin_details' ), 20, 3 );
-		add_filter( 'upgrader_source_selection', array( $this, 'rename_source' ), 10, 4 );
+		add_filter( 'update_plugins_github.com', array( $this, 'check' ), 10, 3 );
+		add_filter( 'plugins_api', array( $this, 'details' ), 20, 3 );
+		add_filter( 'auto_update_plugin', array( $this, 'auto_update' ), 10, 2 );
+		add_filter( 'upgrader_source_selection', array( $this, 'keep_folder' ), 10, 4 );
+		add_action( 'upgrader_process_complete', array( self::class, 'forget' ) );
+		add_action( 'load-update-core.php', array( $this, 'force_check' ) );
 	}
 
 	/**
-	 * Return the latest release as update data.
+	 * Turns auto-updates on for this plugin.
 	 *
-	 * @param array|false $update      Update data, false when no other filter answered.
-	 * @param array       $plugin_data Plugin headers.
-	 * @param string      $plugin_file Plugin basename.
-	 * @return array|false
+	 * @param bool|null $update Whether to update, as decided so far.
+	 * @param object    $item   Update offer.
+	 * @return bool|null
 	 */
-	public function check_update( $update, array $plugin_data, string $plugin_file ) {
-		unset( $plugin_data );
+	public function auto_update( $update, $item ) {
+		if ( ! is_object( $item ) || ( $item->plugin ?? '' ) !== $this->plugin_file ) {
+			return $update;
+		}
 
+		/**
+		 * Filters whether WordPress installs new releases of the plugin on its own.
+		 *
+		 * @since 1.4.0
+		 *
+		 * @param bool $enabled Default true.
+		 */
+		return (bool) apply_filters( 'cinq_wp_theme_updates_auto_update', true );
+	}
+
+	/**
+	 * Unpacks an update into the folder the plugin already lives in.
+	 *
+	 * The zip unpacks into `cinq-wp-theme-updates/`. A copy installed under
+	 * another name (a renamed folder) would otherwise come back under that one,
+	 * and WordPress would deactivate the plugin it can no longer find.
+	 *
+	 * @param string|\WP_Error     $source        Unpacked folder.
+	 * @param string               $remote_source Folder it was unpacked in.
+	 * @param mixed                $upgrader      Upgrader.
+	 * @param array<string, mixed> $hook_extra    Context; `plugin` on updates.
+	 * @return string|\WP_Error
+	 */
+	public function keep_folder( $source, $remote_source, $upgrader, $hook_extra = array() ) {
+		global $wp_filesystem;
+
+		if ( ! is_string( $source ) || ( $hook_extra['plugin'] ?? '' ) !== $this->plugin_file ) {
+			return $source;
+		}
+
+		$folder = dirname( $this->plugin_file );
+		$target = trailingslashit( $remote_source ) . $folder . '/';
+
+		if ( '.' === $folder || untrailingslashit( $source ) === untrailingslashit( $target ) || ! is_object( $wp_filesystem ) ) {
+			return $source;
+		}
+
+		return $wp_filesystem->move( $source, $target, true ) ? $target : $source;
+	}
+
+	/**
+	 * Forgets the cached release, so the next check asks GitHub again.
+	 *
+	 * @return void
+	 */
+	public static function forget(): void {
+		delete_transient( self::TRANSIENT );
+	}
+
+	/**
+	 * Reads GitHub again when "Check again" is clicked on the Updates screen.
+	 *
+	 * @return void
+	 */
+	public function force_check(): void {
+		if ( isset( $_GET['force-check'] ) && current_user_can( 'update_plugins' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- core's own link; only drops a cache.
+			self::forget();
+		}
+	}
+
+	/**
+	 * Answers WordPress's update check for this plugin.
+	 *
+	 * @param array<string, mixed>|false $update      Update found so far.
+	 * @param array<string, mixed>       $plugin_data Plugin headers.
+	 * @param string                     $plugin_file Plugin basename.
+	 * @return array<string, mixed>|false
+	 */
+	public function check( $update, $plugin_data, $plugin_file ) {
 		if ( $this->plugin_file !== $plugin_file ) {
 			return $update;
 		}
@@ -58,143 +160,171 @@ class PluginUpdater {
 			return $update;
 		}
 
-		$release = $this->get_release();
+		$release = self::latest();
 
 		if ( null === $release ) {
 			return $update;
 		}
 
 		return array(
-			'slug'    => $this->slug(),
-			'version' => $release['version'],
-			'url'     => $release['url'],
-			'package' => $release['package'],
+			'id'           => 'github.com/' . self::REPOSITORY,
+			'slug'         => dirname( $plugin_file ),
+			'plugin'       => $plugin_file,
+			'version'      => $release['version'],
+			'url'          => $release['url'],
+			'package'      => $release['package'],
+			'requires'     => $release['requires'],
+			'requires_php' => $release['requires_php'],
 		);
 	}
 
 	/**
-	 * Fill the "View details" modal with the plugin description and the release notes.
+	 * Fills the "View details" modal.
 	 *
-	 * @param false|object|array $result Plugin information, false by default.
-	 * @param string             $action API action.
-	 * @param object             $args   Request arguments.
-	 * @return false|object|array
+	 * @param false|object|array<string, mixed> $result Result so far.
+	 * @param string                            $action API action.
+	 * @param object                            $args   Request arguments.
+	 * @return false|object|array<string, mixed>
 	 */
-	public function plugin_details( $result, string $action, $args ) {
-		if ( 'plugin_information' !== $action || ! is_object( $args ) || ( $args->slug ?? '' ) !== $this->slug() ) {
+	public function details( $result, $action, $args ) {
+		if ( 'plugin_information' !== $action || dirname( $this->plugin_file ) !== ( $args->slug ?? '' ) ) {
 			return $result;
 		}
 
-		$release = $this->get_release();
+		$release = self::latest();
 
 		if ( null === $release ) {
 			return $result;
 		}
 
-		$plugin_data = get_plugin_data( CINQ_WP_THEME_UPDATES_FILE, false, false );
-
 		return (object) array(
-			'name'          => $plugin_data['Name'],
-			'slug'          => $this->slug(),
+			'name'          => 'CINQ Theme Updates',
+			'slug'          => dirname( $this->plugin_file ),
 			'version'       => $release['version'],
-			'author'        => $plugin_data['Author'],
-			'homepage'      => $plugin_data['PluginURI'],
-			'requires'      => $plugin_data['RequiresWP'],
-			'requires_php'  => $plugin_data['RequiresPHP'],
-			'last_updated'  => $release['date'],
+			'author'        => '<a href="https://agencecinq.com">CINQ</a>',
+			'homepage'      => 'https://github.com/' . self::REPOSITORY,
 			'download_link' => $release['package'],
+			'requires'      => $release['requires'],
+			'requires_php'  => $release['requires_php'],
 			'sections'      => array(
-				'description' => wpautop( esc_html( $plugin_data['Description'] ) ),
-				'changelog'   => wpautop( esc_html( $release['notes'] ) ),
+				'changelog' => '' === $release['notes']
+					? sprintf( '<p><a href="%s">%s</a></p>', esc_url( $release['url'] ), esc_html__( 'Release notes on GitHub', 'cinq-wp-theme-updates' ) )
+					: wpautop( esc_html( $release['notes'] ) ),
 			),
 		);
 	}
 
 	/**
-	 * Rename the extracted archive folder (owner-repo-sha) to the plugin slug.
+	 * Returns the latest release, from cache or from GitHub.
 	 *
-	 * @param string|\WP_Error $source        Path of the extracted folder.
-	 * @param string           $remote_source Parent folder of the extraction.
-	 * @param \WP_Upgrader     $upgrader      Upgrader instance.
-	 * @param array            $hook_extra    Extra arguments, with the plugin being updated.
-	 * @return string|\WP_Error
+	 * @return array{version: string, url: string, package: string, notes: string, requires: string, requires_php: string}|null
 	 */
-	public function rename_source( $source, string $remote_source, $upgrader, array $hook_extra ) {
-		unset( $upgrader );
+	public static function latest(): ?array {
+		$cached = get_transient( self::TRANSIENT );
 
-		if ( is_wp_error( $source ) || ( $hook_extra['plugin'] ?? '' ) !== $this->plugin_file ) {
-			return $source;
+		if ( is_array( $cached ) ) {
+			return empty( $cached['version'] ) ? null : $cached;
 		}
 
-		global $wp_filesystem;
+		$release = self::parse_manifest( self::fetch( 'https://github.com/' . self::REPOSITORY . '/releases/latest/download/' . self::MANIFEST ) )
+			?? self::parse( self::fetch( 'https://api.github.com/repos/' . self::REPOSITORY . '/releases/latest' ) );
 
-		$destination = trailingslashit( $remote_source ) . $this->slug() . '/';
-
-		if ( trailingslashit( $source ) === $destination ) {
-			return $source;
-		}
-
-		if ( ! $wp_filesystem->move( $source, $destination ) ) {
-			return new \WP_Error(
-				'cinq_wp_theme_updates_rename_failed',
-				__( 'Could not rename the update folder.', 'cinq-wp-theme-updates' )
-			);
-		}
-
-		return $destination;
-	}
-
-	/**
-	 * Latest GitHub release, cached to stay under the API rate limit.
-	 *
-	 * @return array{version: string, package: string, url: string, notes: string, date: string}|null
-	 */
-	private function get_release(): ?array {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- "Check again" button on the updates screen.
-		$force_check = isset( $_GET['force-check'] );
-		$cached      = $force_check ? false : get_site_transient( self::CACHE_KEY );
-
-		if ( false !== $cached ) {
-			return is_array( $cached ) ? $cached : null;
-		}
-
-		$url      = 'https://api.github.com/repos/' . $this->repository() . '/releases/latest';
-		$response = wp_remote_get( $url, array( 'headers' => array( 'Accept' => 'application/vnd.github+json' ) ) );
-		$body     = json_decode( wp_remote_retrieve_body( $response ), true );
-		$release  = null;
-
-		if ( 200 === wp_remote_retrieve_response_code( $response ) && isset( $body['tag_name'], $body['zipball_url'] ) ) {
-			$release = array(
-				'version' => ltrim( $body['tag_name'], 'v' ),
-				'package' => $body['zipball_url'],
-				'url'     => $body['html_url'],
-				'notes'   => (string) $body['body'],
-				'date'    => $body['published_at'],
-			);
-		}
-
-		// A failed request is cached too, for a shorter time, as an empty string.
-		$cached     = $release ?? '';
-		$expiration = $release ? 6 * HOUR_IN_SECONDS : HOUR_IN_SECONDS;
-
-		set_site_transient( self::CACHE_KEY, $cached, $expiration );
+		// Remember failures too, for an hour, so a GitHub outage does not slow
+		// every admin page down.
+		set_transient( self::TRANSIENT, $release ?? array(), null === $release ? HOUR_IN_SECONDS : 12 * HOUR_IN_SECONDS );
 
 		return $release;
 	}
 
 	/**
-	 * GitHub repository (owner/name), read from the Update URI header.
+	 * Downloads a URL, following GitHub's redirects to its file storage.
+	 *
+	 * @param string $url URL.
+	 * @return string Body, empty on any failure.
 	 */
-	private function repository(): string {
-		$update_uri = get_file_data( CINQ_WP_THEME_UPDATES_FILE, array( 'update_uri' => 'Update URI' ) )['update_uri'];
+	private static function fetch( string $url ): string {
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout' => 10,
+				'headers' => array(
+					'Accept'     => 'application/vnd.github+json, application/json',
+					'User-Agent' => 'cinq-wp-theme-updates/' . CINQ_WP_THEME_UPDATES_VERSION,
+				),
+			)
+		);
 
-		return trim( (string) wp_parse_url( $update_uri, PHP_URL_PATH ), '/' );
+		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			return '';
+		}
+
+		return (string) wp_remote_retrieve_body( $response );
 	}
 
 	/**
-	 * Plugin slug, i.e. its folder name.
+	 * Reads the `update.json` attached to a release.
+	 *
+	 * @param string $body File contents.
+	 * @return array{version: string, url: string, package: string, notes: string, requires: string, requires_php: string}|null
 	 */
-	private function slug(): string {
-		return dirname( $this->plugin_file );
+	public static function parse_manifest( string $body ): ?array {
+		$data = json_decode( $body, true );
+
+		if ( ! is_array( $data ) || empty( $data['version'] ) || empty( $data['package'] ) ) {
+			return null;
+		}
+
+		$package = (string) $data['package'];
+
+		// Only ever install what this repository's releases serve.
+		if ( ! str_starts_with( $package, 'https://github.com/' . self::REPOSITORY . '/releases/download/' ) ) {
+			return null;
+		}
+
+		return array(
+			'version'      => ltrim( (string) $data['version'], 'vV' ),
+			'url'          => (string) ( $data['url'] ?? 'https://github.com/' . self::REPOSITORY . '/releases' ),
+			'package'      => $package,
+			'notes'        => (string) ( $data['notes'] ?? '' ),
+			'requires'     => (string) ( $data['requires'] ?? '' ),
+			'requires_php' => (string) ( $data['requires_php'] ?? '8.1' ),
+		);
+	}
+
+	/**
+	 * Reads a GitHub "latest release" API response.
+	 *
+	 * @param string $body Response body.
+	 * @return array{version: string, url: string, package: string, notes: string, requires: string, requires_php: string}|null
+	 */
+	public static function parse( string $body ): ?array {
+		$data = json_decode( $body, true );
+
+		if ( ! is_array( $data ) || empty( $data['tag_name'] ) || ! empty( $data['draft'] ) || ! empty( $data['prerelease'] ) ) {
+			return null;
+		}
+
+		$package = '';
+
+		foreach ( (array) ( $data['assets'] ?? array() ) as $asset ) {
+			if ( self::ASSET === ( $asset['name'] ?? '' ) && ! empty( $asset['browser_download_url'] ) ) {
+				$package = (string) $asset['browser_download_url'];
+			}
+		}
+
+		// The source archive GitHub builds unpacks into "cinq-wp-theme-updates-1.4.0/",
+		// which WordPress would install as a second plugin: no asset, no update.
+		if ( '' === $package ) {
+			return null;
+		}
+
+		return array(
+			'version'      => ltrim( (string) $data['tag_name'], 'vV' ),
+			'url'          => (string) ( $data['html_url'] ?? 'https://github.com/' . self::REPOSITORY ),
+			'package'      => $package,
+			'notes'        => (string) ( $data['body'] ?? '' ),
+			'requires'     => '',
+			'requires_php' => '8.1',
+		);
 	}
 }
