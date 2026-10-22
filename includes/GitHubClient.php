@@ -12,7 +12,7 @@ namespace CinqWpThemeUpdates;
  */
 class GitHubClient {
 
-	private const CACHE_KEY = 'cinq_wp_theme_updates_release_v3';
+	private const CACHE_KEY = 'cinq_wp_theme_updates_release_v4';
 	private const ERROR_KEY = 'cinq_wp_theme_updates_last_error';
 	private const CACHE_TTL = 12 * HOUR_IN_SECONDS;
 
@@ -107,6 +107,7 @@ class GitHubClient {
 		$release = array(
 			'tag_name'     => (string) $body['tag_name'],
 			'version'      => $this->normalize_version( (string) $body['tag_name'] ),
+			'name'         => ! empty( $body['name'] ) ? (string) $body['name'] : (string) $body['tag_name'],
 			'url'          => (string) ( $body['html_url'] ?? '' ),
 			'changelog'    => (string) ( $body['body'] ?? '' ),
 			'package'      => $this->resolve_package_url( $body ),

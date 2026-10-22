@@ -92,6 +92,9 @@ The release is cached twelve hours. **Check again** on the Updates screen reads 
 
 == Changelog ==
 
+= 2.1.0 =
+* The settings page shows the latest theme release by its GitHub name, such as `v1.2.3 · Ampère`, linked to the release. A release without a name shows its tag, as on GitHub.
+
 = 2.0.1 =
 * The version is the plugin header alone: the `CINQ_WP_THEME_UPDATES_VERSION` constant is removed, and so is the clearing of the update caches on the first page load after an update.
 * What earlier releases needed is removed: the GitHub API fallback for plugin releases without `update.json`, the `token` scheme for classic tokens (every token is sent as `Bearer`), and the cleanup of tokens saved before 1.0.1.
