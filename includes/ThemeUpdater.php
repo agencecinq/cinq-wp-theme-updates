@@ -30,6 +30,19 @@ class ThemeUpdater {
 		add_filter( 'pre_set_site_transient_update_themes', array( $this, 'inject_update' ) );
 		add_filter( 'themes_api', array( $this, 'theme_details' ), 10, 3 );
 		add_filter( 'upgrader_pre_download', array( $this, 'authenticate_download' ), 10, 4 );
+		add_action( 'load-update-core.php', array( $this, 'force_check' ), 9 );
+	}
+
+	/**
+	 * Reads GitHub again when "Check again" is clicked on the Updates screen.
+	 *
+	 * Priority 9: core checks for theme updates on the same hook at 10, and
+	 * must find the cache already empty.
+	 */
+	public function force_check(): void {
+		if ( isset( $_GET['force-check'] ) && current_user_can( 'update_themes' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- core's own link; only drops a cache.
+			$this->github->clear_cache();
+		}
 	}
 
 	/**
