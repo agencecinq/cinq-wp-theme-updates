@@ -8,8 +8,7 @@
 namespace CinqWpThemeUpdates;
 
 /**
- * Offers updates from the latest GitHub release, like any other plugin, and
- * installs them on its own.
+ * Offers updates from the latest GitHub release, like any other plugin.
  *
  * The plugin is distributed on GitHub only. Its `Update URI` header points
  * there, which makes WordPress skip WordPress.org and ask the
@@ -20,7 +19,7 @@ namespace CinqWpThemeUpdates;
  * The release is read from the `update.json` the workflow attaches next to the
  * zip: a plain download, which GitHub does not rate-limit, where its API
  * allows sixty calls an hour per address and shared hosting puts many sites
- * behind one. The API stays as a fallback for releases without the file.
+ * behind one.
  *
  * The manifest carries the README.txt of the release: the "View details" modal
  * shows its sections, as WordPress.org does, and the Updates screen the
@@ -35,11 +34,6 @@ class PluginUpdater {
 	 * Repository, `owner/name`.
 	 */
 	public const REPOSITORY = 'agencecinq/cinq-wp-theme-updates';
-
-	/**
-	 * Name of the zip attached to each release.
-	 */
-	public const ASSET = 'cinq-wp-theme-updates.zip';
 
 	/**
 	 * Name of the release manifest attached to each release.
@@ -165,8 +159,7 @@ class PluginUpdater {
 	}
 
 	/**
-	 * Fills the "View details" modal with the readme of the release, or else
-	 * its notes.
+	 * Fills the "View details" modal with the readme of the release.
 	 *
 	 * @param false|object|array<string, mixed> $result Result so far.
 	 * @param string                            $action API action.
@@ -184,8 +177,6 @@ class PluginUpdater {
 			return $result;
 		}
 
-		$sections = Readme::sections( $release['readme'] );
-
 		return (object) array(
 			'name'          => 'CINQ Theme Updates',
 			'slug'          => dirname( $this->plugin_file ),
@@ -198,11 +189,7 @@ class PluginUpdater {
 			'requires_php'  => $release['requires_php'],
 			'last_updated'  => $release['last_updated'],
 			'banners'       => array( 'high' => plugins_url( 'assets/banner.svg', CINQ_WP_THEME_UPDATES_FILE ) ),
-			'sections'      => $sections ? $sections : array(
-				'changelog' => '' === $release['notes']
-					? sprintf( '<p><a href="%s">%s</a></p>', esc_url( $release['url'] ), esc_html__( 'Release notes on GitHub', 'cinq-wp-theme-updates' ) )
-					: wpautop( esc_html( $release['notes'] ) ),
-			),
+			'sections'      => Readme::sections( $release['readme'] ),
 		);
 	}
 
@@ -225,7 +212,7 @@ class PluginUpdater {
 	/**
 	 * Returns the latest release, from cache or from GitHub.
 	 *
-	 * @return array{version: string, url: string, package: string, notes: string, readme: string, requires: string, requires_php: string, last_updated: string}|null
+	 * @return array{version: string, url: string, package: string, readme: string, requires: string, requires_php: string, last_updated: string}|null
 	 */
 	public static function latest(): ?array {
 		$cached = get_transient( self::TRANSIENT );
@@ -234,8 +221,7 @@ class PluginUpdater {
 			return empty( $cached['version'] ) ? null : $cached;
 		}
 
-		$release = self::parse_manifest( self::fetch( 'https://github.com/' . self::REPOSITORY . '/releases/latest/download/' . self::MANIFEST ) )
-			?? self::parse( self::fetch( 'https://api.github.com/repos/' . self::REPOSITORY . '/releases/latest' ) );
+		$release = self::parse_manifest( self::fetch( 'https://github.com/' . self::REPOSITORY . '/releases/latest/download/' . self::MANIFEST ) );
 
 		// Remember failures too, for an hour, so a GitHub outage does not slow
 		// every admin page down.
@@ -255,10 +241,7 @@ class PluginUpdater {
 			$url,
 			array(
 				'timeout' => 10,
-				'headers' => array(
-					'Accept'     => 'application/vnd.github+json, application/json',
-					'User-Agent' => 'cinq-wp-theme-updates/' . CINQ_WP_THEME_UPDATES_VERSION,
-				),
+				'headers' => array( 'User-Agent' => 'cinq-wp-theme-updates' ),
 			)
 		);
 
@@ -273,7 +256,7 @@ class PluginUpdater {
 	 * Reads the `update.json` attached to a release.
 	 *
 	 * @param string $body File contents.
-	 * @return array{version: string, url: string, package: string, notes: string, readme: string, requires: string, requires_php: string, last_updated: string}|null
+	 * @return array{version: string, url: string, package: string, readme: string, requires: string, requires_php: string, last_updated: string}|null
 	 */
 	public static function parse_manifest( string $body ): ?array {
 		$data = json_decode( $body, true );
@@ -290,53 +273,13 @@ class PluginUpdater {
 		}
 
 		return array(
-			'version'      => ltrim( (string) $data['version'], 'vV' ),
-			'url'          => (string) ( $data['url'] ?? 'https://github.com/' . self::REPOSITORY . '/releases' ),
+			'version'      => (string) $data['version'],
+			'url'          => (string) ( $data['url'] ?? '' ),
 			'package'      => $package,
-			'notes'        => (string) ( $data['notes'] ?? '' ),
 			'readme'       => (string) ( $data['readme'] ?? '' ),
 			'requires'     => (string) ( $data['requires'] ?? '' ),
-			'requires_php' => (string) ( $data['requires_php'] ?? '8.1' ),
+			'requires_php' => (string) ( $data['requires_php'] ?? '' ),
 			'last_updated' => (string) ( $data['last_updated'] ?? '' ),
-		);
-	}
-
-	/**
-	 * Reads a GitHub "latest release" API response.
-	 *
-	 * @param string $body Response body.
-	 * @return array{version: string, url: string, package: string, notes: string, readme: string, requires: string, requires_php: string, last_updated: string}|null
-	 */
-	public static function parse( string $body ): ?array {
-		$data = json_decode( $body, true );
-
-		if ( ! is_array( $data ) || empty( $data['tag_name'] ) || ! empty( $data['draft'] ) || ! empty( $data['prerelease'] ) ) {
-			return null;
-		}
-
-		$package = '';
-
-		foreach ( (array) ( $data['assets'] ?? array() ) as $asset ) {
-			if ( self::ASSET === ( $asset['name'] ?? '' ) && ! empty( $asset['browser_download_url'] ) ) {
-				$package = (string) $asset['browser_download_url'];
-			}
-		}
-
-		// The source archive GitHub builds unpacks into "cinq-wp-theme-updates-1.4.0/",
-		// which WordPress would install as a second plugin: no asset, no update.
-		if ( '' === $package ) {
-			return null;
-		}
-
-		return array(
-			'version'      => ltrim( (string) $data['tag_name'], 'vV' ),
-			'url'          => (string) ( $data['html_url'] ?? 'https://github.com/' . self::REPOSITORY ),
-			'package'      => $package,
-			'notes'        => (string) ( $data['body'] ?? '' ),
-			'readme'       => '',
-			'requires'     => '',
-			'requires_php' => '8.1',
-			'last_updated' => (string) ( $data['published_at'] ?? '' ),
 		);
 	}
 }

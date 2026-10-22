@@ -47,7 +47,7 @@ The theme repository publishes a GitHub release for each tag, with the productio
 
 1. Bump the version in `style.css`.
 2. Tag the release, such as `v1.2.3`.
-3. Attach `{theme-slug}.zip` to the release, by hand or through GitHub Actions.
+3. Attach `{theme-slug}.zip` to the release, by hand or through GitHub Actions. A release without a ZIP is not offered as an update.
 
 The ZIP holds the theme folder at its root: `my-theme.zip` contains `my-theme/style.css` and the rest of the theme.
 
@@ -67,16 +67,16 @@ WordPress compares the release version to `style.css` and shows the update under
 
 = Updates =
 
-The plugin updates from the latest release of [agencecinq/cinq-wp-theme-updates](https://github.com/agencecinq/cinq-wp-theme-updates/releases), like any other plugin in **Dashboard > Updates**. Auto-updates are off by default: **Enable auto-updates** in the Plugins screen turns them on for the site. The `Update URI` header routes the check to GitHub instead of WordPress.org. Versions before 1.3.0 do not update themselves: install 1.3.0 by hand once, later versions update as usual.
+The plugin updates from the latest release of [agencecinq/cinq-wp-theme-updates](https://github.com/agencecinq/cinq-wp-theme-updates/releases), like any other plugin in **Dashboard > Updates**. Auto-updates are off by default: **Enable auto-updates** in the Plugins screen turns them on for the site. The `Update URI` header routes the check to GitHub instead of WordPress.org.
 
-The check reads the `update.json` attached to the latest release, a plain download GitHub does not rate-limit, and falls back to the GitHub API. The release is cached twelve hours; **Check again** on the Updates screen reads it again.
+The check reads the `update.json` attached to the latest release, a plain download GitHub does not rate-limit. The release is cached twelve hours; **Check again** on the Updates screen reads it again.
 
 To publish a release:
 
-1. Bump `Version` and `CINQ_WP_THEME_UPDATES_VERSION` in `cinq-wp-theme-updates.php`, and add the version to the changelog below.
+1. Bump `Version` in `cinq-wp-theme-updates.php`, and add the version to the changelog below.
 2. Commit, push, then push a tag: `git tag v1.4.0 && git push origin v1.4.0`.
 
-The release workflow checks that the tag matches both versions and has a changelog entry, builds `cinq-wp-theme-updates.zip` with `git archive` (`.gitattributes` leaves the development files out) and attaches it to the release with `update.json`. The changelog entry becomes the release notes, and the plugin details show this file as it is in the release.
+The release workflow checks that the tag matches the version and has a changelog entry, builds `cinq-wp-theme-updates.zip` with `git archive` (`.gitattributes` leaves the development files out) and attaches it to the release with `update.json`. The changelog entry becomes the release notes, and the plugin details show this file as it is in the release.
 
 No update is offered when the plugin folder is a Git working copy, since updating replaces the whole folder.
 
@@ -90,11 +90,12 @@ Run `composer install`, then `composer lint` (phpcs) or `composer lint:fix` (php
 
 The release is cached twelve hours. **Check again** on the Updates screen reads it again.
 
-= Why does the plugins list show “Visit plugin site” instead of “View details”? =
-
-WordPress links the plugin details once its update check has read the latest release. It does not when the plugin folder is a Git working copy, where no update is offered, or while GitHub cannot be reached.
-
 == Changelog ==
+
+= 2.0.1 =
+* The version is the plugin header alone: the `CINQ_WP_THEME_UPDATES_VERSION` constant is removed, and so is the clearing of the update caches on the first page load after an update.
+* What earlier releases needed is removed: the GitHub API fallback for plugin releases without `update.json`, the `token` scheme for classic tokens (every token is sent as `Bearer`), and the cleanup of tokens saved before 1.0.1.
+* A theme release without a ZIP is no longer offered as an update: its download could only fail.
 
 = 2.0.0 =
 * Breaking: auto-updates are no longer forced on, and the `cinq_wp_theme_updates_auto_update` filter is removed. They are WordPress's own, off by default, as for any plugin. Migration: turn them on per site with **Enable auto-updates** in the Plugins screen, or `wp plugin auto-updates enable cinq-wp-theme-updates`; a site that returned false from the filter can drop it.

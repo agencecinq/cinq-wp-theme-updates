@@ -12,7 +12,7 @@ namespace CinqWpThemeUpdates;
  */
 class GitHubClient {
 
-	private const CACHE_KEY = 'cinq_wp_theme_updates_release_v2';
+	private const CACHE_KEY = 'cinq_wp_theme_updates_release_v3';
 	private const ERROR_KEY = 'cinq_wp_theme_updates_last_error';
 	private const CACHE_TTL = 12 * HOUR_IN_SECONDS;
 
@@ -110,7 +110,6 @@ class GitHubClient {
 			'url'          => (string) ( $body['html_url'] ?? '' ),
 			'changelog'    => (string) ( $body['body'] ?? '' ),
 			'package'      => $this->resolve_package_url( $body ),
-			'asset_id'     => $this->resolve_asset_id( $body ),
 			'published_at' => (string) ( $body['published_at'] ?? '' ),
 		);
 
@@ -148,24 +147,11 @@ class GitHubClient {
 	 */
 	public function get_headers(): array {
 		return array(
-			'Authorization'        => $this->get_authorization_header(),
+			'Authorization'        => 'Bearer ' . $this->config->get_token(),
 			'Accept'               => 'application/vnd.github+json',
 			'X-GitHub-Api-Version' => '2022-11-28',
-			'User-Agent'           => 'CINQ-Theme-Updates/' . CINQ_WP_THEME_UPDATES_VERSION,
+			'User-Agent'           => 'cinq-wp-theme-updates',
 		);
-	}
-
-	/**
-	 * Build the Authorization header for GitHub personal access tokens.
-	 */
-	public function get_authorization_header(): string {
-		$token = $this->config->get_token();
-
-		if ( str_starts_with( $token, 'ghp_' ) || str_starts_with( $token, 'gho_' ) ) {
-			return 'token ' . $token;
-		}
-
-		return 'Bearer ' . $token;
 	}
 
 	/**
@@ -287,25 +273,20 @@ class GitHubClient {
 	/**
 	 * Download a release asset to a temporary file.
 	 *
-	 * @param string $package Package or asset API URL.
+	 * @param string $package Release asset API URL.
 	 * @return string|\WP_Error Path to the downloaded archive.
 	 */
 	public function download_release_asset( string $package ) {
-		$download_url = $this->resolve_download_url( $package );
+		$headers = array_merge( $this->get_headers(), array( 'Accept' => 'application/octet-stream' ) );
 
 		/** This filter is documented in includes/GitHubClient.php */
 		$sslverify = (bool) apply_filters( 'cinq_wp_theme_updates_sslverify', true );
 		$response  = wp_remote_get(
-			$download_url,
+			$package,
 			array(
 				'timeout'     => 300,
 				'redirection' => 5,
-				'headers'     => array(
-					'Authorization'        => $this->get_authorization_header(),
-					'Accept'               => 'application/octet-stream',
-					'X-GitHub-Api-Version' => '2022-11-28',
-					'User-Agent'           => 'CINQ-Theme-Updates/' . CINQ_WP_THEME_UPDATES_VERSION,
-				),
+				'headers'     => $headers,
 				'sslverify'   => $sslverify,
 			)
 		);
@@ -323,12 +304,12 @@ class GitHubClient {
 					/* translators: 1: HTTP status code, 2: download URL */
 					__( 'Theme download failed with HTTP status %1$d (%2$s).', 'cinq-wp-theme-updates' ),
 					$status_code,
-					$download_url
+					$package
 				)
 			);
 		}
 
-		$filename = wp_tempnam( $download_url );
+		$filename = wp_tempnam( $package );
 
 		if ( ! $filename ) {
 			return new \WP_Error(
@@ -351,53 +332,21 @@ class GitHubClient {
 	}
 
 	/**
-	 * Resolve the best download URL for a release asset.
-	 *
-	 * @param string $package Stored package URL.
-	 */
-	public function resolve_download_url( string $package ): string {
-		if ( str_contains( $package, 'api.github.com/repos/' ) && str_contains( $package, '/releases/assets/' ) ) {
-			return $package;
-		}
-
-		$release = $this->get_latest_release();
-
-		if ( is_array( $release ) && ! empty( $release['asset_id'] ) ) {
-			return sprintf(
-				'https://api.github.com/repos/%s/releases/assets/%d',
-				$this->config->get_repository(),
-				(int) $release['asset_id']
-			);
-		}
-
-		return $package;
-	}
-
-	/**
-	 * Resolve the ZIP download URL from release metadata.
+	 * API URL of the release ZIP, downloaded with the token; empty without one.
 	 *
 	 * @param array<string, mixed> $release GitHub release payload.
 	 */
 	private function resolve_package_url( array $release ): string {
 		$asset_id = $this->resolve_asset_id( $release );
 
-		if ( null !== $asset_id ) {
-			return sprintf(
-				'https://api.github.com/repos/%s/releases/assets/%d',
-				$this->config->get_repository(),
-				$asset_id
-			);
+		if ( null === $asset_id ) {
+			return '';
 		}
 
-		$zip_filename = $this->config->get_zip_filename();
-		$repository   = $this->config->get_repository();
-		$tag_name     = (string) ( $release['tag_name'] ?? '' );
-
 		return sprintf(
-			'https://github.com/%s/releases/download/%s/%s',
-			$repository,
-			rawurlencode( $tag_name ),
-			rawurlencode( $zip_filename )
+			'https://api.github.com/repos/%s/releases/assets/%d',
+			$this->config->get_repository(),
+			$asset_id
 		);
 	}
 
