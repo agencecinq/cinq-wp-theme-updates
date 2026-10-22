@@ -94,7 +94,7 @@ my-theme.zip
     └── ...
 ```
 
-WordPress compares the release version to `style.css` and shows the update under **Appearance → Themes**.
+WordPress compares the release version to `style.css` and shows the update under **Appearance → Themes**. The release is cached twelve hours; **Check again** on the Updates screen reads it again, so a new tag shows up right away.
 
 ## Scope
 

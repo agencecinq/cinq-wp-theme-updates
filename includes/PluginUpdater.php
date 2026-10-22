@@ -67,7 +67,7 @@ class PluginUpdater {
 		add_filter( 'auto_update_plugin', array( $this, 'auto_update' ), 10, 2 );
 		add_filter( 'upgrader_source_selection', array( $this, 'keep_folder' ), 10, 4 );
 		add_action( 'upgrader_process_complete', array( self::class, 'forget' ) );
-		add_action( 'load-update-core.php', array( $this, 'force_check' ) );
+		add_action( 'load-update-core.php', array( $this, 'force_check' ), 9 );
 	}
 
 	/**
@@ -133,6 +133,9 @@ class PluginUpdater {
 
 	/**
 	 * Reads GitHub again when "Check again" is clicked on the Updates screen.
+	 *
+	 * Priority 9: core checks for plugin updates on the same hook at 10, and
+	 * must find the cache already empty.
 	 *
 	 * @return void
 	 */
