@@ -12,7 +12,8 @@ namespace CinqWpThemeUpdates;
  * WordPress.org does.
  *
  * Handles what the readme uses: "== Section ==", "= Heading =", paragraphs,
- * nested bulleted and numbered lists, **bold**, `code` and [links](https://…).
+ * nested bulleted and numbered lists, fenced code, **bold**, `code` and
+ * [links](https://…).
  */
 class Readme {
 
@@ -32,7 +33,12 @@ class Readme {
 	private const LIST_ITEM = '/^( *)(\*|\d+\.) +(.*)$/';
 
 	/**
-	 * HTML sections of a readme, keyed as the plugin information expects them.
+	 * Pattern of fenced code, its content captured.
+	 */
+	private const FENCE = '/^```[^\n]*\n(.*?)^```[ \t]*$/ms';
+
+	/**
+	 * Returns the HTML sections of a readme, keyed as the plugin information expects them.
 	 *
 	 * @param string $readme Readme content.
 	 * @return array<string, string>
@@ -54,24 +60,44 @@ class Readme {
 	}
 
 	/**
-	 * Value of a readme header, e.g. "Tested up to".
+	 * Returns the value of a readme header, e.g. "Tested up to".
 	 *
 	 * @param string $readme Readme content.
 	 * @param string $name   Header name.
+	 * @return string
 	 */
 	public static function header( string $readme, string $name ): string {
 		return preg_match( '/^' . preg_quote( $name, '/' ) . ':\s*(.+?)\s*$/mi', $readme, $match ) ? $match[1] : '';
 	}
 
 	/**
-	 * HTML of a section: headings, lists and paragraphs, split by blank lines.
+	 * Returns the HTML of a section: its fenced code as is, the text around it
+	 * in blocks.
 	 *
 	 * @param string $text Section text.
+	 * @return string
 	 */
 	private static function html( string $text ): string {
 		$html = '';
 
-		foreach ( preg_split( '/\n\s*\n/', trim( $text ) ) as $block ) {
+		// Odd parts are the content of fenced code, which may hold blank lines.
+		foreach ( preg_split( self::FENCE, trim( $text ), -1, PREG_SPLIT_DELIM_CAPTURE ) as $index => $part ) {
+			$html .= 1 === $index % 2 ? '<pre><code>' . esc_html( rtrim( $part ) ) . '</code></pre>' : self::blocks( $part );
+		}
+
+		return $html;
+	}
+
+	/**
+	 * Returns the HTML of text: headings, lists and paragraphs, split by blank lines.
+	 *
+	 * @param string $text Text.
+	 * @return string
+	 */
+	private static function blocks( string $text ): string {
+		$html = '';
+
+		foreach ( preg_split( '/\n\s*\n/', trim( $text ), -1, PREG_SPLIT_NO_EMPTY ) as $block ) {
 			$lines = explode( "\n", $block );
 
 			if ( preg_match( '/^=\s*(.+?)\s*=$/', $lines[0], $match ) ) {
@@ -90,9 +116,10 @@ class Readme {
 	}
 
 	/**
-	 * HTML of list lines, a deeper indent opening a list in the item above.
+	 * Returns the HTML of list lines, a deeper indent opening a list in the item above.
 	 *
-	 * @param string[] $lines List lines.
+	 * @param array<int, string> $lines List lines.
+	 * @return string
 	 */
 	private static function list_html( array $lines ): string {
 		$html  = '';
@@ -132,16 +159,17 @@ class Readme {
 	}
 
 	/**
-	 * HTML of a line of text, escaped, with its code, bold and links.
+	 * Returns the HTML of a line of text, escaped, with its code, bold and links.
 	 *
 	 * @param string $text Text.
+	 * @return string
 	 */
 	private static function inline( string $text ): string {
 		$html = esc_html( $text );
-		$html = preg_replace( '/`([^`]+)`/', '<code>$1</code>', $html );
-		$html = preg_replace( '/\*\*(.+?)\*\*/', '<strong>$1</strong>', $html );
+		$html = (string) preg_replace( '/`([^`]+)`/', '<code>$1</code>', $html );
+		$html = (string) preg_replace( '/\*\*(.+?)\*\*/', '<strong>$1</strong>', $html );
 
-		return preg_replace_callback(
+		return (string) preg_replace_callback(
 			'/\[([^\]]+)\]\(([^)\s]+)\)/',
 			fn( array $link ) => '<a href="' . esc_url( html_entity_decode( $link[2] ) ) . '">' . $link[1] . '</a>',
 			$html
