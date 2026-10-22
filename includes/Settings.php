@@ -270,7 +270,11 @@ class Settings {
 							echo ' ' . esc_html( $api_error );
 						}
 					} else {
-						echo esc_html( $release['version'] );
+						printf(
+							'<a href="%1$s">%2$s</a>',
+							esc_url( $release['url'] ),
+							esc_html( $release['name'] )
+						);
 
 						if ( version_compare( $release['version'], $theme->get( 'Version' ), '>' ) ) {
 							echo ' — ' . esc_html__( 'update available', 'cinq-wp-theme-updates' );
