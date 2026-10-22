@@ -26,6 +26,7 @@ require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/Plugin.php';
 require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/Config.php';
 require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/GitHubClient.php';
 require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/ThemeUpdater.php';
+require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/Readme.php';
 require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/PluginUpdater.php';
 require_once CINQ_WP_THEME_UPDATES_PATH . 'includes/Settings.php';
 

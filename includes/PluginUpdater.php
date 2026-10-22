@@ -22,6 +22,10 @@ namespace CinqWpThemeUpdates;
  * allows sixty calls an hour per address and shared hosting puts many sites
  * behind one. The API stays as a fallback for releases without the file.
  *
+ * The manifest carries the README.txt of the release: the "View details" modal
+ * shows its sections, as WordPress.org does, and the Updates screen the
+ * WordPress version it is tested up to.
+ *
  * Auto-updates are on: WordPress installs a new release with its own updates,
  * twice a day. The `cinq_wp_theme_updates_auto_update` filter turns them off.
  */
@@ -178,11 +182,14 @@ class PluginUpdater {
 			'package'      => $release['package'],
 			'requires'     => $release['requires'],
 			'requires_php' => $release['requires_php'],
+			'tested'       => self::tested( $release['readme'] ),
+			'icons'        => array( 'svg' => plugins_url( 'assets/icon.svg', CINQ_WP_THEME_UPDATES_FILE ) ),
 		);
 	}
 
 	/**
-	 * Fills the "View details" modal.
+	 * Fills the "View details" modal with the readme of the release, or else
+	 * its notes.
 	 *
 	 * @param false|object|array<string, mixed> $result Result so far.
 	 * @param string                            $action API action.
@@ -200,6 +207,8 @@ class PluginUpdater {
 			return $result;
 		}
 
+		$sections = Readme::sections( $release['readme'] );
+
 		return (object) array(
 			'name'          => 'CINQ Theme Updates',
 			'slug'          => dirname( $this->plugin_file ),
@@ -208,8 +217,11 @@ class PluginUpdater {
 			'homepage'      => 'https://github.com/' . self::REPOSITORY,
 			'download_link' => $release['package'],
 			'requires'      => $release['requires'],
+			'tested'        => self::tested( $release['readme'] ),
 			'requires_php'  => $release['requires_php'],
-			'sections'      => array(
+			'last_updated'  => $release['last_updated'],
+			'banners'       => array( 'high' => plugins_url( 'assets/banner.svg', CINQ_WP_THEME_UPDATES_FILE ) ),
+			'sections'      => $sections ? $sections : array(
 				'changelog' => '' === $release['notes']
 					? sprintf( '<p><a href="%s">%s</a></p>', esc_url( $release['url'] ), esc_html__( 'Release notes on GitHub', 'cinq-wp-theme-updates' ) )
 					: wpautop( esc_html( $release['notes'] ) ),
@@ -218,9 +230,25 @@ class PluginUpdater {
 	}
 
 	/**
+	 * WordPress version the release is tested up to.
+	 *
+	 * As on WordPress.org, "Tested up to: 7.1" covers every 7.1.x release:
+	 * WordPress compares full versions, and would warn a 7.1.3 site that the
+	 * plugin is not tested with it.
+	 *
+	 * @param string $readme Readme of the release.
+	 */
+	private static function tested( string $readme ): string {
+		$tested     = Readme::header( $readme, 'Tested up to' );
+		$wp_version = get_bloginfo( 'version' );
+
+		return '' !== $tested && str_starts_with( $wp_version . '.', $tested . '.' ) ? $wp_version : $tested;
+	}
+
+	/**
 	 * Returns the latest release, from cache or from GitHub.
 	 *
-	 * @return array{version: string, url: string, package: string, notes: string, requires: string, requires_php: string}|null
+	 * @return array{version: string, url: string, package: string, notes: string, readme: string, requires: string, requires_php: string, last_updated: string}|null
 	 */
 	public static function latest(): ?array {
 		$cached = get_transient( self::TRANSIENT );
@@ -268,7 +296,7 @@ class PluginUpdater {
 	 * Reads the `update.json` attached to a release.
 	 *
 	 * @param string $body File contents.
-	 * @return array{version: string, url: string, package: string, notes: string, requires: string, requires_php: string}|null
+	 * @return array{version: string, url: string, package: string, notes: string, readme: string, requires: string, requires_php: string, last_updated: string}|null
 	 */
 	public static function parse_manifest( string $body ): ?array {
 		$data = json_decode( $body, true );
@@ -289,8 +317,10 @@ class PluginUpdater {
 			'url'          => (string) ( $data['url'] ?? 'https://github.com/' . self::REPOSITORY . '/releases' ),
 			'package'      => $package,
 			'notes'        => (string) ( $data['notes'] ?? '' ),
+			'readme'       => (string) ( $data['readme'] ?? '' ),
 			'requires'     => (string) ( $data['requires'] ?? '' ),
 			'requires_php' => (string) ( $data['requires_php'] ?? '8.1' ),
+			'last_updated' => (string) ( $data['last_updated'] ?? '' ),
 		);
 	}
 
@@ -298,7 +328,7 @@ class PluginUpdater {
 	 * Reads a GitHub "latest release" API response.
 	 *
 	 * @param string $body Response body.
-	 * @return array{version: string, url: string, package: string, notes: string, requires: string, requires_php: string}|null
+	 * @return array{version: string, url: string, package: string, notes: string, readme: string, requires: string, requires_php: string, last_updated: string}|null
 	 */
 	public static function parse( string $body ): ?array {
 		$data = json_decode( $body, true );
@@ -326,8 +356,10 @@ class PluginUpdater {
 			'url'          => (string) ( $data['html_url'] ?? 'https://github.com/' . self::REPOSITORY ),
 			'package'      => $package,
 			'notes'        => (string) ( $data['body'] ?? '' ),
+			'readme'       => '',
 			'requires'     => '',
 			'requires_php' => '8.1',
+			'last_updated' => (string) ( $data['published_at'] ?? '' ),
 		);
 	}
 }
