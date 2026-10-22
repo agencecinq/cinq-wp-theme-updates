@@ -65,7 +65,7 @@ class Config {
 	 * GitHub personal access token.
 	 */
 	public function get_token(): string {
-		$token = $this->sanitize_token( $this->get_setting( 'github_token' ) );
+		$token = $this->get_setting( 'github_token' );
 
 		/**
 		 * Filters the GitHub personal access token sent with the requests.
@@ -136,9 +136,8 @@ class Config {
 			return false;
 		}
 
-		// Trailing slash: owner/theme must not match owner/theme-updates, this plugin's own package.
-		return str_contains( $package, 'github.com/' . $repository . '/' )
-			|| str_contains( $package, 'api.github.com/repos/' . $repository . '/' );
+		// Trailing slash: owner/theme must not match owner/theme-blocks.
+		return str_starts_with( $package, 'https://api.github.com/repos/' . $repository . '/' );
 	}
 
 	/**

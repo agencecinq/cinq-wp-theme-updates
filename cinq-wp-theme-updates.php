@@ -18,7 +18,6 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CINQ_WP_THEME_UPDATES_VERSION', '2.0.0' );
 define( 'CINQ_WP_THEME_UPDATES_FILE', __FILE__ );
 define( 'CINQ_WP_THEME_UPDATES_PATH', plugin_dir_path( __FILE__ ) );
 
