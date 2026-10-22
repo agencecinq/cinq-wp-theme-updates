@@ -2,8 +2,8 @@ name: Release
 
 # Push a tag such as v1.4.0: the plugin zip and its update.json manifest are
 # built and attached to a GitHub release, whose notes are the changelog entry
-# of README.txt. Sites running the plugin see the update within twelve hours
-# and install it on their own (auto-updates).
+# of README.txt. Sites running the plugin see the update within twelve hours,
+# and install it on their own where auto-updates are on.
 
 on:
   push:
