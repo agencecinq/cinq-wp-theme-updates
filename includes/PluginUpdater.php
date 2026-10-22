@@ -177,12 +177,23 @@ class PluginUpdater {
 			return $result;
 		}
 
+		$headers = get_file_data(
+			CINQ_WP_THEME_UPDATES_FILE,
+			array(
+				'name'       => 'Plugin Name',
+				'author'     => 'Author',
+				'author_uri' => 'Author URI',
+				'homepage'   => 'Plugin URI',
+			)
+		);
+		$author  = sprintf( '<a href="%s">%s</a>', esc_url( $headers['author_uri'] ), esc_html( $headers['author'] ) );
+
 		return (object) array(
-			'name'          => 'CINQ Theme Updates',
+			'name'          => $headers['name'],
 			'slug'          => dirname( $this->plugin_file ),
 			'version'       => $release['version'],
-			'author'        => '<a href="https://agencecinq.com">CINQ</a>',
-			'homepage'      => 'https://github.com/' . self::REPOSITORY,
+			'author'        => $author,
+			'homepage'      => $headers['homepage'],
 			'download_link' => $release['package'],
 			'requires'      => $release['requires'],
 			'tested'        => self::tested( $release['readme'] ),
