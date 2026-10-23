@@ -57,6 +57,17 @@ jobs:
           fi
           cat notes.md
 
+      # An image at .github/releases/<tag>.png heads the release notes.
+      - name: Add the release image
+        env:
+          NAME: ${{ steps.release.outputs.name }}
+        run: |
+          image=".github/releases/$GITHUB_REF_NAME.png"
+          if [ -f "$image" ]; then
+            { printf '![%s](https://raw.githubusercontent.com/%s/%s/%s)\n\n' "$NAME" "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" "$image"; cat notes.md; } > notes.tmp
+            mv notes.tmp notes.md
+          fi
+
       - run: composer install --no-interaction --no-progress && composer lint
 
       - name: Build the zip

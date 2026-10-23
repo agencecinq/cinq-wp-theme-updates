@@ -70,7 +70,7 @@ To publish a release:
 1. Bump `Version` in `cinq-wp-theme-updates.php`, and add the version to the changelog below.
 2. Commit, push, then push a tag. A minor or major version is named after an aviator or an aviatrix (see the FAQ), with an annotated tag: `git tag -a v2.2.0 -m Daurat && git push origin v2.2.0`. A patch version keeps a plain tag: `git tag v2.2.1 && git push origin v2.2.1`.
 
-The release workflow checks that the tag matches the version and has a changelog entry, builds `cinq-wp-theme-updates.zip` with `git archive` (`.gitattributes` leaves the development files out) and attaches it to the release with `update.json`. The release is titled by the tag, followed by the message of an annotated tag: `v2.2.0 · Daurat`. The changelog entry becomes the release notes, and the plugin details show this file as it is in the release.
+The release workflow checks that the tag matches the version and has a changelog entry, builds `cinq-wp-theme-updates.zip` with `git archive` (`.gitattributes` leaves the development files out) and attaches it to the release with `update.json`. The release is titled by the tag, followed by the message of an annotated tag: `v2.2.0 · Daurat`. An image at `.github/releases/v2.2.0.png` heads its notes, when there is one. The changelog entry becomes the release notes, and the plugin details show this file as it is in the release.
 
 No update is offered when the plugin folder is a Git working copy, since updating replaces the whole folder.
 
