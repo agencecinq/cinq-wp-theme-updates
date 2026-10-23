@@ -34,6 +34,16 @@ class ThemeUpdater {
 	}
 
 	/**
+	 * Forgets the cached release and the theme update offered from it, so the
+	 * next check asks GitHub again, or WordPress.org alone once the plugin is
+	 * deactivated.
+	 */
+	public function forget(): void {
+		$this->github->clear_cache();
+		delete_site_transient( 'update_themes' );
+	}
+
+	/**
 	 * Reads GitHub again when "Check again" is clicked on the Updates screen.
 	 *
 	 * Priority 9: core checks for theme updates on the same hook at 10, and

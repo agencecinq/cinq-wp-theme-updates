@@ -22,7 +22,7 @@ Under **Settings > CINQ Theme Updates**:
 * **Tag prefix** – stripped from release tags before version comparison (default: `v`)
 * **ZIP filename** – release asset name (default: `{theme-slug}.zip`)
 
-The token is stored in the WordPress options table. An empty token field keeps the saved token.
+The token is stored in the WordPress options table. An empty token field keeps the saved token. Deleting the plugin removes its settings, token included.
 
 = Filters =
 
@@ -88,6 +88,8 @@ The release is cached twelve hours. **Check again** on the Updates screen reads 
 
 = 2.2.0 =
 * The theme ZIP is written to disk as it downloads, as WordPress does for its own packages, instead of being held in memory first.
+* Deactivating the plugin forgets the cached releases and the theme update offered from them. Deleting it removes its settings, GitHub token included.
+* The last GitHub error is no longer stored: nothing read it, the settings screen shows the error of its own request.
 
 = 2.1.0 =
 * The settings page shows the latest theme release by its GitHub name, such as `v1.2.3 · Ampère`, linked to the release. A release without a name shows its tag, as on GitHub.
