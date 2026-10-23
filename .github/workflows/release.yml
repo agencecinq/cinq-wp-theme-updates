@@ -2,8 +2,10 @@ name: Release
 
 # Push a tag such as v1.4.0: the plugin zip and its update.json manifest are
 # built and attached to a GitHub release, whose notes are the changelog entry
-# of README.txt. Sites running the plugin see the update within twelve hours,
-# and install it on their own where auto-updates are on.
+# of README.txt. An annotated tag names the release after its message, as in
+# Eigrene: `git tag -a v2.2.0 -m Daurat` publishes "v2.2.0 · Daurat". Sites
+# running the plugin see the update within twelve hours, and install it on
+# their own where auto-updates are on.
 
 on:
   push:
@@ -17,6 +19,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Checkout turns an annotated tag into a lightweight one: fetch it again to read its message.
+      - name: Name the release
+        id: release
+        run: |
+          git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          NAME="$GITHUB_REF_NAME"
+          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" = "tag" ]; then
+            SUBJECT="$(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")"
+            if [ -n "$SUBJECT" ]; then
+              NAME="$GITHUB_REF_NAME · $SUBJECT"
+            fi
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -67,6 +83,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          name: ${{ steps.release.outputs.name }}
           files: |
             cinq-wp-theme-updates.zip
             update.json

@@ -68,9 +68,9 @@ The check reads the `update.json` attached to the latest release, a plain downlo
 To publish a release:
 
 1. Bump `Version` in `cinq-wp-theme-updates.php`, and add the version to the changelog below.
-2. Commit, push, then push a tag: `git tag v1.4.0 && git push origin v1.4.0`.
+2. Commit, push, then push a tag. A minor or major version is named after an aviator or an aviatrix (see the FAQ), with an annotated tag: `git tag -a v2.2.0 -m Daurat && git push origin v2.2.0`. A patch version keeps a plain tag: `git tag v2.2.1 && git push origin v2.2.1`.
 
-The release workflow checks that the tag matches the version and has a changelog entry, builds `cinq-wp-theme-updates.zip` with `git archive` (`.gitattributes` leaves the development files out) and attaches it to the release with `update.json`. The changelog entry becomes the release notes, and the plugin details show this file as it is in the release.
+The release workflow checks that the tag matches the version and has a changelog entry, builds `cinq-wp-theme-updates.zip` with `git archive` (`.gitattributes` leaves the development files out) and attaches it to the release with `update.json`. The release is titled by the tag, followed by the message of an annotated tag: `v2.2.0 · Daurat`. The changelog entry becomes the release notes, and the plugin details show this file as it is in the release.
 
 No update is offered when the plugin folder is a Git working copy, since updating replaces the whole folder.
 
@@ -88,13 +88,19 @@ The interface is in English, translated into French in `languages/`. After chang
 
 The release is cached twelve hours. **Check again** on the Updates screen reads it again.
 
+= Why are the versions named after aviators and aviatrices? =
+
+The plugin carries the theme from GitHub to the sites, as the pioneers of aviation carried the mail and opened the routes: Mermoz, Guillaumet and Saint-Exupéry on the lines of the Aéropostale, from Toulouse to Dakar and over the Andes; Adrienne Bolland, the first woman to fly across the Andes, in 1921; Maryse Bastié over the South Atlantic; Hélène Boucher and her speed records. Each minor or major version takes one of their names, as macOS versions took the names of big cats and WordPress versions take those of jazz musicians.
+
+2.2.0, which follows the Plugin Handbook, is Daurat: the director who held the Aéropostale to its rules, and became Rivière in Night Flight, the novel Saint-Exupéry drew from the line.
+
 == Changelog ==
 
 = 2.2.0 =
 * The theme ZIP is written to disk as it downloads, as WordPress does for its own packages, instead of being held in memory first.
 * Deactivating the plugin forgets the cached releases and the theme update offered from them. Deleting it removes its settings, GitHub token included.
 * The last GitHub error is no longer stored: nothing read it, the settings screen shows the error of its own request.
-* The settings page saves through the Settings API: `options.php` checks the nonce and the capability, then returns to the page with WordPress's *Settings saved.* notice, shown once. Reloading the page no longer submits the form again.
+* The settings page saves through the Settings API: `options.php` checks the nonce and the capability, then returns to the page with WordPress's own "Settings saved." notice, shown once. Reloading the page no longer submits the form again.
 * Changing the settings forgets the cached theme release, whoever changes them. Saving them unchanged no longer does: **Check again** on the Updates screen reads GitHub again.
 * The token field no longer lets browsers fill in a saved password, which could replace the token with the WordPress password.
 * Each field is tied to its description for screen readers. An empty tag prefix uses `v`, shown as its placeholder, as the other fields show their defaults.
