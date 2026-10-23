@@ -90,7 +90,7 @@ The release is cached twelve hours. **Check again** on the Updates screen reads 
 
 = Why are the versions named after aviators and aviatrices? =
 
-The plugin carries the theme from GitHub to the sites, as the pioneers of aviation carried the mail and opened the routes: Mermoz, Guillaumet and Saint-Exupéry on the lines of the Aéropostale, from Toulouse to Dakar and over the Andes; Adrienne Bolland, the first woman to fly across the Andes, in 1921; Maryse Bastié over the South Atlantic; Hélène Boucher and her speed records. Each minor or major version takes one of their names, as macOS versions took the names of big cats and WordPress versions take those of jazz musicians.
+The plugin carries the theme from GitHub to the sites, as the pioneers of aviation carried the mail and opened the routes: Mermoz, Guillaumet and Saint-Exupéry on the lines of the Aéropostale, from Toulouse to Dakar and over the Andes; Adrienne Bolland, the first woman to fly across the Andes, in 1921; Maryse Bastié over the South Atlantic; Hélène Boucher and her speed records. Each minor or major version takes one of their names.
 
 2.2.0, which follows the Plugin Handbook, is Daurat: the director who held the Aéropostale to its rules, and became Rivière in Night Flight, the novel Saint-Exupéry drew from the line.
 
