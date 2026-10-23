@@ -86,6 +86,9 @@ The release is cached twelve hours. **Check again** on the Updates screen reads 
 
 == Changelog ==
 
+= 2.2.0 =
+* The theme ZIP is written to disk as it downloads, as WordPress does for its own packages, instead of being held in memory first.
+
 = 2.1.0 =
 * The settings page shows the latest theme release by its GitHub name, such as `v1.2.3 · Ampère`, linked to the release. A release without a name shows its tag, as on GitHub.
 
