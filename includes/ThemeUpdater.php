@@ -31,6 +31,8 @@ class ThemeUpdater {
 		add_filter( 'themes_api', array( $this, 'theme_details' ), 10, 3 );
 		add_filter( 'upgrader_pre_download', array( $this, 'authenticate_download' ), 10, 4 );
 		add_action( 'load-update-core.php', array( $this, 'force_check' ), 9 );
+		add_action( 'add_option_' . Config::OPTION_KEY, array( $this, 'forget' ) );
+		add_action( 'update_option_' . Config::OPTION_KEY, array( $this, 'forget' ) );
 	}
 
 	/**

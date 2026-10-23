@@ -8,9 +8,14 @@
 namespace CinqWpThemeUpdates;
 
 /**
- * Admin settings UI.
+ * Admin settings UI, saved by options.php through the Settings API.
  */
 class Settings {
+
+	/**
+	 * Slug of the settings page, also its option group.
+	 */
+	private const PAGE = 'cinq-wp-theme-updates';
 
 	/**
 	 * Constructor.
@@ -37,52 +42,69 @@ class Settings {
 			__( 'CINQ Theme Updates', 'cinq-wp-theme-updates' ),
 			__( 'CINQ Theme Updates', 'cinq-wp-theme-updates' ),
 			'manage_options',
-			'cinq-wp-theme-updates',
+			self::PAGE,
 			array( $this, 'render_page' )
 		);
 	}
 
 	/**
-	 * Handle settings form submission.
+	 * Register the setting and its fields.
 	 */
 	public function register_settings(): void {
-		if ( ! isset( $_POST['cinq_wp_theme_updates_nonce'] ) ) {
-			return;
-		}
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-
-		check_admin_referer( 'cinq_wp_theme_updates_save', 'cinq_wp_theme_updates_nonce' );
-
-		$stored_settings = get_option( Config::OPTION_KEY, array() );
-		$stored_settings = is_array( $stored_settings ) ? $stored_settings : array();
-		$github_token    = isset( $_POST['github_token'] ) ? sanitize_text_field( wp_unslash( $_POST['github_token'] ) ) : '';
-
-		if ( '' === $github_token ) {
-			$github_token = (string) ( $stored_settings['github_token'] ?? '' );
-		}
-
-		$this->config->save_settings(
-			array(
-				'theme_slug'   => sanitize_key( wp_unslash( $_POST['theme_slug'] ?? '' ) ),
-				'repository'   => sanitize_text_field( wp_unslash( $_POST['repository'] ?? '' ) ),
-				'github_token' => $github_token,
-				'tag_prefix'   => sanitize_text_field( wp_unslash( $_POST['tag_prefix'] ?? 'v' ) ),
-				'zip_filename' => sanitize_file_name( wp_unslash( $_POST['zip_filename'] ?? '' ) ),
-			)
+		register_setting(
+			self::PAGE,
+			Config::OPTION_KEY,
+			array( 'sanitize_callback' => array( $this->config, 'sanitize_settings' ) )
 		);
 
-		( new GitHubClient( $this->config ) )->clear_cache();
-		delete_site_transient( 'update_themes' );
+		add_settings_section( 'default', '', '', self::PAGE );
 
-		add_settings_error(
-			'cinq_wp_theme_updates',
-			'settings_saved',
-			__( 'Settings saved. Theme update cache cleared.', 'cinq-wp-theme-updates' ),
-			'updated'
+		$fields = array(
+			'theme_slug'   => __( 'Theme slug', 'cinq-wp-theme-updates' ),
+			'repository'   => __( 'GitHub repository', 'cinq-wp-theme-updates' ),
+			'github_token' => __( 'GitHub token', 'cinq-wp-theme-updates' ),
+			'tag_prefix'   => __( 'Tag prefix', 'cinq-wp-theme-updates' ),
+			'zip_filename' => __( 'ZIP filename', 'cinq-wp-theme-updates' ),
 		);
+
+		foreach ( $fields as $key => $label ) {
+			add_settings_field( $key, $label, array( $this, 'render_field' ), self::PAGE, 'default', array( 'label_for' => $key ) );
+		}
+	}
+
+	/**
+	 * Render a field with its description.
+	 *
+	 * The token is never printed back: an empty field keeps the saved one.
+	 *
+	 * @param array{label_for: string} $args Field arguments.
+	 */
+	public function render_field( array $args ): void {
+		$key            = $args['label_for'];
+		$is_token       = 'github_token' === $key;
+		$type           = $is_token ? 'password' : 'text';
+		$autocomplete   = $is_token ? 'new-password' : 'on';
+		$name           = Config::OPTION_KEY . '[' . $key . ']';
+		$value          = $is_token ? '' : $this->config->get_setting( $key );
+		$placeholder    = $this->placeholder( $key );
+		$description    = $this->description( $key );
+		$description_id = $key . '-description';
+
+		?>
+		<input
+			type="<?php echo esc_attr( $type ); ?>"
+			class="regular-text"
+			id="<?php echo esc_attr( $key ); ?>"
+			name="<?php echo esc_attr( $name ); ?>"
+			value="<?php echo esc_attr( $value ); ?>"
+			placeholder="<?php echo esc_attr( $placeholder ); ?>"
+			autocomplete="<?php echo esc_attr( $autocomplete ); ?>"
+			aria-describedby="<?php echo esc_attr( $description_id ); ?>"
+		/>
+		<p class="description" id="<?php echo esc_attr( $description_id ); ?>">
+			<?php echo esc_html( $description ); ?>
+		</p>
+		<?php
 	}
 
 	/**
@@ -93,145 +115,27 @@ class Settings {
 			return;
 		}
 
-		$settings   = $this->config->get_settings_for_display();
 		$theme_slug = $this->config->get_theme_slug();
 		$theme      = wp_get_theme( $theme_slug );
-		$github     = new GitHubClient( $this->config );
-		$fetch      = $this->config->is_configured()
-			? $github->fetch_latest_release()
-			: array(
-				'release' => null,
-				'error'   => __( 'Repository and GitHub token are required.', 'cinq-wp-theme-updates' ),
-			);
+		$repository = $this->config->get_repository();
+		$fetch      = ( new GitHubClient( $this->config ) )->fetch_latest_release();
 		$release    = $fetch['release'];
 		$api_error  = $fetch['error'];
 
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'CINQ Theme Updates', 'cinq-wp-theme-updates' ); ?></h1>
-
-			<?php settings_errors( 'cinq_wp_theme_updates' ); ?>
+			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
 			<p>
 				<?php esc_html_e( 'Configure GitHub release checks for private theme updates.', 'cinq-wp-theme-updates' ); ?>
 			</p>
 
-			<form method="post">
-				<?php wp_nonce_field( 'cinq_wp_theme_updates_save', 'cinq_wp_theme_updates_nonce' ); ?>
-
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row">
-							<label for="theme_slug"><?php esc_html_e( 'Theme slug', 'cinq-wp-theme-updates' ); ?></label>
-						</th>
-						<td>
-							<input
-								type="text"
-								class="regular-text"
-								id="theme_slug"
-								name="theme_slug"
-								value="<?php echo esc_attr( $settings['theme_slug'] ); ?>"
-								placeholder="<?php echo esc_attr( get_stylesheet() ); ?>"
-							/>
-							<p class="description">
-								<?php
-								printf(
-									/* translators: 1: active theme slug, 2: active theme version */
-									esc_html__( 'Leave empty to use the active theme (%1$s, version %2$s).', 'cinq-wp-theme-updates' ),
-									esc_html( get_stylesheet() ),
-									esc_html( wp_get_theme()->get( 'Version' ) )
-								);
-								?>
-							</p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="repository"><?php esc_html_e( 'GitHub repository', 'cinq-wp-theme-updates' ); ?></label>
-						</th>
-						<td>
-							<input
-								type="text"
-								class="regular-text"
-								id="repository"
-								name="repository"
-								value="<?php echo esc_attr( $settings['repository'] ); ?>"
-								placeholder="owner/my-theme"
-							/>
-							<p class="description">
-								<?php
-								printf(
-									/* translators: %s: detected repository from Theme URI */
-									esc_html__( 'Format: owner/repo. Auto-detected from Theme URI: %s', 'cinq-wp-theme-updates' ),
-									esc_html( '' !== $this->config->get_repository() ? $this->config->get_repository() : __( 'not found', 'cinq-wp-theme-updates' ) )
-								);
-								?>
-							</p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="github_token"><?php esc_html_e( 'GitHub token', 'cinq-wp-theme-updates' ); ?></label>
-						</th>
-						<td>
-							<input
-								type="password"
-								class="regular-text"
-								id="github_token"
-								name="github_token"
-								value=""
-								autocomplete="off"
-								placeholder="<?php esc_attr_e( 'ghp_...', 'cinq-wp-theme-updates' ); ?>"
-							/>
-							<p class="description">
-								<?php
-								if ( ! empty( $settings['has_stored_token'] ) ) {
-									esc_html_e( 'A token is saved. Leave empty to keep the current token.', 'cinq-wp-theme-updates' );
-									echo ' ';
-								}
-								esc_html_e( 'Fine-grained token with read access to the repository contents, or a classic token with repo scope.', 'cinq-wp-theme-updates' );
-								?>
-							</p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="tag_prefix"><?php esc_html_e( 'Tag prefix', 'cinq-wp-theme-updates' ); ?></label>
-						</th>
-						<td>
-							<input
-								type="text"
-								class="regular-text"
-								id="tag_prefix"
-								name="tag_prefix"
-								value="<?php echo esc_attr( $settings['tag_prefix'] ); ?>"
-							/>
-							<p class="description">
-								<?php esc_html_e( 'Prefix stripped from tags before version comparison (default: v).', 'cinq-wp-theme-updates' ); ?>
-							</p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="zip_filename"><?php esc_html_e( 'ZIP filename', 'cinq-wp-theme-updates' ); ?></label>
-						</th>
-						<td>
-							<input
-								type="text"
-								class="regular-text"
-								id="zip_filename"
-								name="zip_filename"
-								value="<?php echo esc_attr( $settings['zip_filename'] ); ?>"
-								placeholder="<?php echo esc_attr( $this->config->get_zip_filename() ); ?>"
-							/>
-							<p class="description">
-								<?php esc_html_e( 'Release asset filename. Defaults to {theme-slug}.zip.', 'cinq-wp-theme-updates' ); ?>
-							</p>
-						</td>
-					</tr>
-				</table>
-
-				<?php submit_button( __( 'Save settings', 'cinq-wp-theme-updates' ) ); ?>
+			<form action="options.php" method="post">
+				<?php
+				settings_fields( self::PAGE );
+				do_settings_sections( self::PAGE );
+				submit_button( __( 'Save settings', 'cinq-wp-theme-updates' ) );
+				?>
 			</form>
 
 			<hr>
@@ -241,7 +145,7 @@ class Settings {
 				<li>
 					<strong><?php esc_html_e( 'GitHub token', 'cinq-wp-theme-updates' ); ?>:</strong>
 					<?php
-					if ( ! empty( $settings['has_stored_token'] ) ) {
+					if ( '' !== $this->config->get_setting( 'github_token' ) ) {
 						esc_html_e( 'Saved in plugin settings', 'cinq-wp-theme-updates' );
 					} else {
 						esc_html_e( 'Missing', 'cinq-wp-theme-updates' );
@@ -250,7 +154,7 @@ class Settings {
 				</li>
 				<li>
 					<strong><?php esc_html_e( 'GitHub repository', 'cinq-wp-theme-updates' ); ?>:</strong>
-					<?php echo esc_html( '' !== $this->config->get_repository() ? $this->config->get_repository() : __( 'not configured', 'cinq-wp-theme-updates' ) ); ?>
+					<?php echo esc_html( '' !== $repository ? $repository : __( 'not configured', 'cinq-wp-theme-updates' ) ); ?>
 				</li>
 				<li>
 					<strong><?php esc_html_e( 'Monitored theme', 'cinq-wp-theme-updates' ); ?>:</strong>
@@ -287,5 +191,44 @@ class Settings {
 			</ul>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Placeholder of a field.
+	 *
+	 * @param string $key Setting key.
+	 */
+	private function placeholder( string $key ): string {
+		return match ( $key ) {
+			'theme_slug'   => get_stylesheet(),
+			'repository'   => 'owner/my-theme',
+			'github_token' => 'ghp_...',
+			'tag_prefix'   => 'v',
+			'zip_filename' => $this->config->get_zip_filename(),
+		};
+	}
+
+	/**
+	 * Description printed under a field.
+	 *
+	 * @param string $key Setting key.
+	 */
+	private function description( string $key ): string {
+		return match ( $key ) {
+			'theme_slug'   => sprintf(
+				/* translators: 1: active theme slug, 2: active theme version */
+				__( 'Leave empty to use the active theme (%1$s, version %2$s).', 'cinq-wp-theme-updates' ),
+				get_stylesheet(),
+				wp_get_theme()->get( 'Version' )
+			),
+			'repository'   => sprintf(
+				/* translators: %s: detected repository from Theme URI */
+				__( 'Format: owner/repo. Auto-detected from Theme URI: %s', 'cinq-wp-theme-updates' ),
+				'' !== $this->config->get_repository() ? $this->config->get_repository() : __( 'not found', 'cinq-wp-theme-updates' )
+			),
+			'github_token' => __( 'Fine-grained token with read access to the repository contents, or a classic token with repo scope. Leave empty to keep the saved token.', 'cinq-wp-theme-updates' ),
+			'tag_prefix'   => __( 'Prefix stripped from tags before version comparison (default: v).', 'cinq-wp-theme-updates' ),
+			'zip_filename' => __( 'Release asset filename. Defaults to {theme-slug}.zip.', 'cinq-wp-theme-updates' ),
+		};
 	}
 }
