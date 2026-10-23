@@ -78,6 +78,8 @@ No update is offered when the plugin folder is a Git working copy, since updatin
 
 Run `composer install`, then `composer lint` (phpcs) or `composer lint:fix` (phpcbf). Use `./vendor/bin/phpcs`, not the global `phpcs` binary: the global install does not register the WordPress standards.
 
+`composer lint` also checks the code against PHP 8.1 and later with PHPCompatibilityWP: what a newer PHP added, which would fail on a PHP 8.1 site, and what later versions deprecate or remove.
+
 The interface is in English, translated into French in `languages/`. After changing a string, run `composer i18n` (WP-CLI 2.8 or later): it extracts the strings to the POT file and merges them into the PO file. Translate the new or changed ones in the PO file, then run `composer i18n` again to compile the MO file WordPress reads.
 
 == Frequently Asked Questions ==
