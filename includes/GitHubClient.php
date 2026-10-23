@@ -272,12 +272,22 @@ class GitHubClient {
 	}
 
 	/**
-	 * Download a release asset to a temporary file.
+	 * Download a release asset to a temporary file, written as it arrives, as
+	 * core's download_url() does.
 	 *
 	 * @param string $package Release asset API URL.
 	 * @return string|\WP_Error Path to the downloaded archive.
 	 */
 	public function download_release_asset( string $package ) {
+		$filename = wp_tempnam( $package );
+
+		if ( ! $filename ) {
+			return new \WP_Error(
+				'cinq_wp_theme_updates_temp_file',
+				__( 'Could not create a temporary file for the theme download.', 'cinq-wp-theme-updates' )
+			);
+		}
+
 		$headers = array_merge( $this->get_headers(), array( 'Accept' => 'application/octet-stream' ) );
 
 		/** This filter is documented in includes/GitHubClient.php */
@@ -289,16 +299,22 @@ class GitHubClient {
 				'redirection' => 5,
 				'headers'     => $headers,
 				'sslverify'   => $sslverify,
+				'stream'      => true,
+				'filename'    => $filename,
 			)
 		);
 
 		if ( is_wp_error( $response ) ) {
+			wp_delete_file( $filename );
+
 			return $response;
 		}
 
 		$status_code = (int) wp_remote_retrieve_response_code( $response );
 
 		if ( 200 !== $status_code ) {
+			wp_delete_file( $filename );
+
 			return new \WP_Error(
 				'cinq_wp_theme_updates_download_failed',
 				sprintf(
@@ -307,25 +323,6 @@ class GitHubClient {
 					$status_code,
 					$package
 				)
-			);
-		}
-
-		$filename = wp_tempnam( $package );
-
-		if ( ! $filename ) {
-			return new \WP_Error(
-				'cinq_wp_theme_updates_temp_file',
-				__( 'Could not create a temporary file for the theme download.', 'cinq-wp-theme-updates' )
-			);
-		}
-
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Temporary file created by wp_tempnam, outside the WordPress filesystem.
-		$written = file_put_contents( $filename, wp_remote_retrieve_body( $response ) );
-
-		if ( false === $written ) {
-			return new \WP_Error(
-				'cinq_wp_theme_updates_write_failed',
-				__( 'Could not write the downloaded theme archive.', 'cinq-wp-theme-updates' )
 			);
 		}
 
