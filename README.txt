@@ -12,12 +12,6 @@ CINQ Theme Updates offers the releases of a theme kept in a private GitHub repos
 
 Repository: [agencecinq/cinq-wp-theme-updates](https://github.com/agencecinq/cinq-wp-theme-updates)
 
-= Requirements =
-
-* WordPress 6.0 or later
-* PHP 8.1 or later
-* A GitHub token with read access to the theme repository
-
 = Settings =
 
 Under **Settings > CINQ Theme Updates**:
