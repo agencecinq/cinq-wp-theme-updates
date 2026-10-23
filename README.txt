@@ -80,7 +80,7 @@ Run `composer install`, then `composer lint` (phpcs) or `composer lint:fix` (php
 
 `composer lint` also checks the code against PHP 8.1 and later with PHPCompatibilityWP: what a newer PHP added, which would fail on a PHP 8.1 site, and what later versions deprecate or remove.
 
-The interface is in English, translated into French in `languages/`. After changing a string, run `composer i18n` (WP-CLI 2.8 or later): it extracts the strings to the POT file and merges them into the PO file. Translate the new or changed ones in the PO file, then run `composer i18n` again to compile the MO file WordPress reads.
+The interface is in English, translated into French in `languages/`. After changing a string, run `composer i18n` (WP-CLI 2.7 or later): it extracts the strings to the POT file and merges them into the PO file. Translate the new or changed ones in the PO file, then run `composer i18n` again to compile the MO file WordPress reads.
 
 == Frequently Asked Questions ==
 
@@ -95,9 +95,11 @@ The release is cached twelve hours. **Check again** on the Updates screen reads 
 * Deactivating the plugin forgets the cached releases and the theme update offered from them. Deleting it removes its settings, GitHub token included.
 * The last GitHub error is no longer stored: nothing read it, the settings screen shows the error of its own request.
 * The settings page saves through the Settings API: `options.php` checks the nonce and the capability, then returns to the page with WordPress's *Settings saved.* notice, shown once. Reloading the page no longer submits the form again.
+* Changing the settings forgets the cached theme release, whoever changes them. Saving them unchanged no longer does: **Check again** on the Updates screen reads GitHub again.
 * The token field no longer lets browsers fill in a saved password, which could replace the token with the WordPress password.
 * Each field is tied to its description for screen readers. An empty tag prefix uses `v`, shown as its placeholder, as the other fields show their defaults.
 * The interface is translated into French. The plugin loads its own translations: WordPress only finds those of plugins hosted on WordPress.org.
+* The status under the settings is a table, like the settings above it.
 
 = 2.1.0 =
 * The settings page shows the latest theme release by its GitHub name, such as `v1.2.3 · Ampère`, linked to the release. A release without a name shows its tag, as on GitHub.
