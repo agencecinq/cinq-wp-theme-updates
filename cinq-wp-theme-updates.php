@@ -12,6 +12,7 @@
  * License URI: https://opensource.org/licenses/MIT
  * Update URI: https://github.com/agencecinq/cinq-wp-theme-updates
  * Text Domain: cinq-wp-theme-updates
+ * Domain Path: /languages
  *
  * @package CinqWpThemeUpdates
  */
