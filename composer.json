@@ -17,6 +17,11 @@
 	},
 	"scripts": {
 		"lint": "phpcs",
-		"lint:fix": "phpcbf"
+		"lint:fix": "phpcbf",
+		"i18n": [
+			"wp i18n make-pot . languages/cinq-wp-theme-updates.pot --no-location --headers='{\"Report-Msgid-Bugs-To\":\"https://github.com/agencecinq/cinq-wp-theme-updates/issues\"}'",
+			"wp i18n update-po languages/cinq-wp-theme-updates.pot",
+			"wp i18n make-mo languages"
+		]
 	}
 }

@@ -141,54 +141,58 @@ class Settings {
 			<hr>
 
 			<h2><?php esc_html_e( 'Status', 'cinq-wp-theme-updates' ); ?></h2>
-			<ul>
-				<li>
-					<strong><?php esc_html_e( 'GitHub token', 'cinq-wp-theme-updates' ); ?>:</strong>
-					<?php
-					if ( '' !== $this->config->get_setting( 'github_token' ) ) {
-						esc_html_e( 'Saved in plugin settings', 'cinq-wp-theme-updates' );
-					} else {
-						esc_html_e( 'Missing', 'cinq-wp-theme-updates' );
-					}
-					?>
-				</li>
-				<li>
-					<strong><?php esc_html_e( 'GitHub repository', 'cinq-wp-theme-updates' ); ?>:</strong>
-					<?php echo esc_html( '' !== $repository ? $repository : __( 'not configured', 'cinq-wp-theme-updates' ) ); ?>
-				</li>
-				<li>
-					<strong><?php esc_html_e( 'Monitored theme', 'cinq-wp-theme-updates' ); ?>:</strong>
-					<?php echo esc_html( $theme->get( 'Name' ) . ' (' . $theme_slug . ')' ); ?>
-				</li>
-				<li>
-					<strong><?php esc_html_e( 'Installed version', 'cinq-wp-theme-updates' ); ?>:</strong>
-					<?php echo esc_html( $theme->get( 'Version' ) ); ?>
-				</li>
-				<li>
-					<strong><?php esc_html_e( 'Latest GitHub release', 'cinq-wp-theme-updates' ); ?>:</strong>
-					<?php
-					if ( null === $release ) {
-						echo esc_html__( 'Unavailable.', 'cinq-wp-theme-updates' );
-
-						if ( ! empty( $api_error ) ) {
-							echo ' ' . esc_html( $api_error );
-						}
-					} else {
-						printf(
-							'<a href="%1$s">%2$s</a>',
-							esc_url( $release['url'] ),
-							esc_html( $release['name'] )
-						);
-
-						if ( version_compare( $release['version'], $theme->get( 'Version' ), '>' ) ) {
-							echo ' — ' . esc_html__( 'update available', 'cinq-wp-theme-updates' );
+			<table class="form-table">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'GitHub token', 'cinq-wp-theme-updates' ); ?></th>
+					<td>
+						<?php
+						if ( '' !== $this->config->get_setting( 'github_token' ) ) {
+							esc_html_e( 'Saved in plugin settings', 'cinq-wp-theme-updates' );
 						} else {
-							echo ' — ' . esc_html__( 'up to date', 'cinq-wp-theme-updates' );
+							esc_html_e( 'Missing', 'cinq-wp-theme-updates' );
 						}
-					}
-					?>
-				</li>
-			</ul>
+						?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'GitHub repository', 'cinq-wp-theme-updates' ); ?></th>
+					<td><?php echo esc_html( '' !== $repository ? $repository : __( 'not configured', 'cinq-wp-theme-updates' ) ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Monitored theme', 'cinq-wp-theme-updates' ); ?></th>
+					<td><?php echo esc_html( $theme->get( 'Name' ) . ' (' . $theme_slug . ')' ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Installed version', 'cinq-wp-theme-updates' ); ?></th>
+					<td><?php echo esc_html( $theme->get( 'Version' ) ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Latest GitHub release', 'cinq-wp-theme-updates' ); ?></th>
+					<td>
+						<?php
+						if ( null === $release ) {
+							echo esc_html__( 'Unavailable.', 'cinq-wp-theme-updates' );
+
+							if ( ! empty( $api_error ) ) {
+								echo ' ' . esc_html( $api_error );
+							}
+						} else {
+							printf(
+								'<a href="%1$s">%2$s</a>',
+								esc_url( $release['url'] ),
+								esc_html( $release['name'] )
+							);
+
+							if ( version_compare( $release['version'], $theme->get( 'Version' ), '>' ) ) {
+								echo ' — ' . esc_html__( 'update available', 'cinq-wp-theme-updates' );
+							} else {
+								echo ' — ' . esc_html__( 'up to date', 'cinq-wp-theme-updates' );
+							}
+						}
+						?>
+					</td>
+				</tr>
+			</table>
 		</div>
 		<?php
 	}
