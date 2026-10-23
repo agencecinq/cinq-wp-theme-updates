@@ -15,13 +15,6 @@ class Config {
 	public const OPTION_KEY = 'cinq_wp_theme_updates_settings';
 
 	/**
-	 * Cached settings array.
-	 *
-	 * @var array<string, string>|null
-	 */
-	private ?array $settings = null;
-
-	/**
 	 * Theme slug to monitor for updates.
 	 */
 	public function get_theme_slug(): string {
@@ -141,66 +134,38 @@ class Config {
 	}
 
 	/**
-	 * Persist plugin settings.
+	 * Sanitize the settings submitted from the settings page, as the
+	 * sanitize_callback of the setting. An empty token keeps the saved one.
 	 *
-	 * @param array<string, string> $settings Settings to save.
-	 */
-	public function save_settings( array $settings ): void {
-		update_option(
-			self::OPTION_KEY,
-			array(
-				'theme_slug'   => sanitize_key( $settings['theme_slug'] ?? '' ),
-				'repository'   => $this->sanitize_repository( $settings['repository'] ?? '' ),
-				'github_token' => $this->sanitize_token( $settings['github_token'] ?? '' ),
-				'tag_prefix'   => sanitize_text_field( $settings['tag_prefix'] ?? 'v' ),
-				'zip_filename' => sanitize_file_name( $settings['zip_filename'] ?? '' ),
-			),
-			false
-		);
-
-		$this->settings = null;
-	}
-
-	/**
-	 * Return all settings for the admin form.
-	 *
+	 * @param mixed $input Submitted settings, unslashed by options.php.
 	 * @return array<string, string>
 	 */
-	public function get_settings_for_display(): array {
-		$stored_token = $this->get_setting( 'github_token' );
+	public function sanitize_settings( $input ): array {
+		$input = is_array( $input ) ? $input : array();
+		$token = $this->sanitize_token( (string) ( $input['github_token'] ?? '' ) );
+
+		if ( '' === $token ) {
+			$token = $this->get_setting( 'github_token' );
+		}
 
 		return array(
-			'theme_slug'       => $this->get_setting( 'theme_slug' ),
-			'repository'       => $this->get_setting( 'repository' ),
-			'has_stored_token' => '' !== $stored_token,
-			'tag_prefix'       => '' !== $this->get_setting( 'tag_prefix' ) ? $this->get_setting( 'tag_prefix' ) : 'v',
-			'zip_filename'     => $this->get_setting( 'zip_filename' ),
+			'theme_slug'   => sanitize_key( $input['theme_slug'] ?? '' ),
+			'repository'   => $this->sanitize_repository( (string) ( $input['repository'] ?? '' ) ),
+			'github_token' => $token,
+			'tag_prefix'   => sanitize_text_field( $input['tag_prefix'] ?? '' ),
+			'zip_filename' => sanitize_file_name( $input['zip_filename'] ?? '' ),
 		);
 	}
 
 	/**
-	 * Read a single stored setting.
+	 * Read a single saved setting, empty when unset.
 	 *
 	 * @param string $key Setting key.
 	 */
-	private function get_setting( string $key ): string {
-		$settings = $this->get_settings();
+	public function get_setting( string $key ): string {
+		$settings = get_option( self::OPTION_KEY, array() );
 
-		return $settings[ $key ] ?? '';
-	}
-
-	/**
-	 * Load settings from the database.
-	 *
-	 * @return array<string, string>
-	 */
-	private function get_settings(): array {
-		if ( null === $this->settings ) {
-			$settings       = get_option( self::OPTION_KEY, array() );
-			$this->settings = is_array( $settings ) ? $settings : array();
-		}
-
-		return $this->settings;
+		return is_array( $settings ) ? (string) ( $settings[ $key ] ?? '' ) : '';
 	}
 
 	/**
@@ -241,13 +206,11 @@ class Config {
 	}
 
 	/**
-	 * Normalize a GitHub token before storage or use.
+	 * Normalize a GitHub token before storage.
 	 *
 	 * @param string $token Raw token value.
 	 */
 	private function sanitize_token( string $token ): string {
-		$token = trim( wp_unslash( $token ) );
-
 		return preg_replace( '/\s+/', '', $token ) ?? '';
 	}
 }
