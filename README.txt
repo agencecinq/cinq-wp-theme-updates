@@ -93,6 +93,7 @@ The release is cached twelve hours. **Check again** on the Updates screen reads 
 * Deactivating the plugin forgets the cached releases and the theme update offered from them. Deleting it removes its settings, GitHub token included.
 * The last GitHub error is no longer stored: nothing read it, the settings screen shows the error of its own request.
 * The settings page saves through the Settings API: `options.php` checks the nonce and the capability, then returns to the page with WordPress's *Settings saved.* notice, shown once. Reloading the page no longer submits the form again.
+* Changing the settings forgets the cached theme release, whoever changes them. Saving them unchanged no longer does: **Check again** on the Updates screen reads GitHub again.
 * The token field no longer lets browsers fill in a saved password, which could replace the token with the WordPress password.
 * Each field is tied to its description for screen readers. An empty tag prefix uses `v`, shown as its placeholder, as the other fields show their defaults.
 * The interface is translated into French. The plugin loads its own translations: WordPress only finds those of plugins hosted on WordPress.org.
