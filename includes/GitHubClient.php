@@ -13,7 +13,6 @@ namespace CinqWpThemeUpdates;
 class GitHubClient {
 
 	private const CACHE_KEY = 'cinq_wp_theme_updates_release_v4';
-	private const ERROR_KEY = 'cinq_wp_theme_updates_last_error';
 	private const CACHE_TTL = 12 * HOUR_IN_SECONDS;
 
 	/**
@@ -43,13 +42,9 @@ class GitHubClient {
 	 */
 	public function fetch_latest_release(): array {
 		if ( ! $this->config->is_configured() ) {
-			$error = __( 'Repository and GitHub token are required.', 'cinq-wp-theme-updates' );
-
-			$this->store_error( $error );
-
 			return array(
 				'release' => null,
-				'error'   => $error,
+				'error'   => __( 'Repository and GitHub token are required.', 'cinq-wp-theme-updates' ),
 			);
 		}
 
@@ -57,8 +52,6 @@ class GitHubClient {
 		$cached    = get_site_transient( $cache_key );
 
 		if ( is_array( $cached ) ) {
-			$this->store_error( null );
-
 			return array(
 				'release' => $cached,
 				'error'   => null,
@@ -83,8 +76,6 @@ class GitHubClient {
 		}
 
 		if ( null !== $response['error'] ) {
-			$this->store_error( $response['error'] );
-
 			return array(
 				'release' => null,
 				'error'   => $response['error'],
@@ -94,13 +85,9 @@ class GitHubClient {
 		$body = $response['body'];
 
 		if ( ! is_array( $body ) || empty( $body['tag_name'] ) ) {
-			$error = __( 'GitHub returned an unexpected release response.', 'cinq-wp-theme-updates' );
-
-			$this->store_error( $error );
-
 			return array(
 				'release' => null,
-				'error'   => $error,
+				'error'   => __( 'GitHub returned an unexpected release response.', 'cinq-wp-theme-updates' ),
 			);
 		}
 
@@ -115,7 +102,6 @@ class GitHubClient {
 		);
 
 		set_site_transient( $cache_key, $release, self::CACHE_TTL );
-		$this->store_error( null );
 
 		return array(
 			'release' => $release,
@@ -124,21 +110,11 @@ class GitHubClient {
 	}
 
 	/**
-	 * Return the last API error message, if any.
-	 */
-	public function get_last_error(): ?string {
-		$error = get_site_transient( self::ERROR_KEY );
-
-		return is_string( $error ) && '' !== $error ? $error : null;
-	}
-
-	/**
 	 * Clear cached release data.
 	 */
 	public function clear_cache(): void {
 		$cache_key = self::CACHE_KEY . '_' . md5( $this->config->get_repository() );
 		delete_site_transient( $cache_key );
-		delete_site_transient( self::ERROR_KEY );
 	}
 
 	/**
@@ -240,20 +216,6 @@ class GitHubClient {
 			$status_code,
 			$message
 		);
-	}
-
-	/**
-	 * Persist the latest API error for the settings screen.
-	 *
-	 * @param string|null $error Error message.
-	 */
-	private function store_error( ?string $error ): void {
-		if ( null === $error || '' === $error ) {
-			delete_site_transient( self::ERROR_KEY );
-			return;
-		}
-
-		set_site_transient( self::ERROR_KEY, $error, self::CACHE_TTL );
 	}
 
 	/**
