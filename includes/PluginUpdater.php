@@ -107,16 +107,23 @@ class PluginUpdater {
 	}
 
 	/**
-	 * Reads GitHub again when "Check again" is clicked on the Updates screen.
+	 * Checks plugin updates again when "Check again" is clicked on the Updates
+	 * screen.
+	 *
+	 * The link only makes WordPress check its own version again. It checks
+	 * plugins on this screen once its last check is a minute old, and the link
+	 * is clicked sooner: forgetting its verdict along with the cached release
+	 * makes it check, and read GitHub, on the spot.
 	 *
 	 * Priority 9: core checks for plugin updates on the same hook at 10, and
-	 * must find the cache already empty.
+	 * must find both caches already empty.
 	 *
 	 * @return void
 	 */
 	public function force_check(): void {
-		if ( isset( $_GET['force-check'] ) && current_user_can( 'update_plugins' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- core's own link; only drops a cache.
+		if ( isset( $_GET['force-check'] ) && current_user_can( 'update_plugins' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- core's own link; only drops caches.
 			self::forget();
+			delete_site_transient( 'update_plugins' );
 		}
 	}
 

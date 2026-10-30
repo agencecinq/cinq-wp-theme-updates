@@ -28,6 +28,7 @@ class ThemeUpdater {
 	 */
 	public function register(): void {
 		add_filter( 'pre_set_site_transient_update_themes', array( $this, 'inject_update' ) );
+		add_filter( 'site_transient_update_themes', array( $this, 'show_update' ) );
 		add_filter( 'themes_api', array( $this, 'theme_details' ), 10, 3 );
 		add_filter( 'upgrader_pre_download', array( $this, 'authenticate_download' ), 10, 4 );
 		add_action( 'load-update-core.php', array( $this, 'force_check' ), 9 );
@@ -46,24 +47,58 @@ class ThemeUpdater {
 	}
 
 	/**
-	 * Reads GitHub again when "Check again" is clicked on the Updates screen.
+	 * Checks theme updates again when "Check again" is clicked on the Updates
+	 * screen.
+	 *
+	 * The link only makes WordPress check its own version again. It checks
+	 * themes on this screen once its last check is a minute old, and the link
+	 * is clicked sooner: forgetting its verdict along with the cached release
+	 * makes it check, and read GitHub, on the spot.
 	 *
 	 * Priority 9: core checks for theme updates on the same hook at 10, and
-	 * must find the cache already empty.
+	 * must find both caches already empty.
 	 */
 	public function force_check(): void {
-		if ( isset( $_GET['force-check'] ) && current_user_can( 'update_themes' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- core's own link; only drops a cache.
-			$this->github->clear_cache();
+		if ( isset( $_GET['force-check'] ) && current_user_can( 'update_themes' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- core's own link; only drops caches.
+			$this->forget();
 		}
 	}
 
 	/**
-	 * Add remote update data to the themes update transient.
+	 * Offers the latest release when WordPress checks for theme updates,
+	 * reading GitHub once the cached release has expired.
 	 *
 	 * @param object|false $transient Themes update transient.
 	 * @return object|false
 	 */
 	public function inject_update( $transient ) {
+		return $this->offer( $transient, $this->github->get_latest_release() );
+	}
+
+	/**
+	 * Offers the cached release whenever WordPress reads its theme updates.
+	 *
+	 * WordPress checks them every twelve hours, and keeps its verdict in
+	 * between: a release read since, by the settings screen or the theme
+	 * details, shows up without waiting for the next check. Never reads
+	 * GitHub, as WordPress reads its updates on every admin page.
+	 *
+	 * @param object|false $transient Themes update transient.
+	 * @return object|false
+	 */
+	public function show_update( $transient ) {
+		return $this->offer( $transient, $this->github->get_cached_release() );
+	}
+
+	/**
+	 * Adds a release to the themes update transient, when it is newer than the
+	 * installed theme and has a ZIP.
+	 *
+	 * @param object|false              $transient Themes update transient.
+	 * @param array<string, mixed>|null $release   GitHub release.
+	 * @return object|false
+	 */
+	private function offer( $transient, ?array $release ) {
 		if ( ! is_object( $transient ) ) {
 			return $transient;
 		}
@@ -73,8 +108,6 @@ class ThemeUpdater {
 		if ( '' === $theme_slug || ! isset( $transient->checked[ $theme_slug ] ) ) {
 			return $transient;
 		}
-
-		$release = $this->github->get_latest_release();
 
 		if ( null === $release || empty( $release['version'] ) || empty( $release['package'] ) ) {
 			return $transient;

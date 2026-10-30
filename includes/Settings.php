@@ -183,10 +183,12 @@ class Settings {
 								esc_html( $release['name'] )
 							);
 
-							if ( version_compare( $release['version'], $theme->get( 'Version' ), '>' ) ) {
-								echo ' — ' . esc_html__( 'update available', 'cinq-wp-theme-updates' );
-							} else {
+							if ( version_compare( $release['version'], $theme->get( 'Version' ), '<=' ) ) {
 								echo ' — ' . esc_html__( 'up to date', 'cinq-wp-theme-updates' );
+							} elseif ( '' === $release['package'] ) {
+								echo ' — ' . esc_html__( 'no ZIP attached to the release', 'cinq-wp-theme-updates' );
+							} else {
+								echo ' — ' . esc_html__( 'update available', 'cinq-wp-theme-updates' );
 							}
 						}
 						?>

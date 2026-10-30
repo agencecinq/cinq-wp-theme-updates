@@ -36,6 +36,17 @@ class GitHubClient {
 	}
 
 	/**
+	 * The release last read from GitHub, without asking GitHub again.
+	 *
+	 * @return array<string, mixed>|null
+	 */
+	public function get_cached_release(): ?array {
+		$cached = get_site_transient( $this->cache_key() );
+
+		return is_array( $cached ) ? $cached : null;
+	}
+
+	/**
 	 * Fetch the latest release and capture API errors.
 	 *
 	 * @return array{release: array<string, mixed>|null, error: string|null}
@@ -48,10 +59,9 @@ class GitHubClient {
 			);
 		}
 
-		$cache_key = self::CACHE_KEY . '_' . md5( $this->config->get_repository() );
-		$cached    = get_site_transient( $cache_key );
+		$cached = $this->get_cached_release();
 
-		if ( is_array( $cached ) ) {
+		if ( null !== $cached ) {
 			return array(
 				'release' => $cached,
 				'error'   => null,
@@ -101,7 +111,10 @@ class GitHubClient {
 			'published_at' => (string) ( $body['published_at'] ?? '' ),
 		);
 
-		set_site_transient( $cache_key, $release, self::CACHE_TTL );
+		// Not kept without its ZIP: a workflow may still be attaching it.
+		if ( '' !== $release['package'] ) {
+			set_site_transient( $this->cache_key(), $release, self::CACHE_TTL );
+		}
 
 		return array(
 			'release' => $release,
@@ -113,8 +126,14 @@ class GitHubClient {
 	 * Clear cached release data.
 	 */
 	public function clear_cache(): void {
-		$cache_key = self::CACHE_KEY . '_' . md5( $this->config->get_repository() );
-		delete_site_transient( $cache_key );
+		delete_site_transient( $this->cache_key() );
+	}
+
+	/**
+	 * Transient caching the release of the configured repository.
+	 */
+	private function cache_key(): string {
+		return self::CACHE_KEY . '_' . md5( $this->config->get_repository() );
 	}
 
 	/**
