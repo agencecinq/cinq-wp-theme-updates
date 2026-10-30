@@ -18,7 +18,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Checkout turns an annotated tag into a lightweight one: fetch it again to read its message.
       - name: Name the release
@@ -92,7 +92,7 @@ jobs:
             '{version: $version, url: $url, package: $package, requires: $requires, requires_php: $requires_php, last_updated: $last_updated, readme: $readme}' > update.json
           jq 'del(.readme)' update.json
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           name: ${{ steps.release.outputs.name }}
           files: |
