@@ -88,6 +88,8 @@ The interface is in English, translated into French in `languages/`. After chang
 
 The release is cached twelve hours. **Check again** on the Updates screen reads it again.
 
+A release without a ZIP is not offered, and the settings screen says the ZIP is missing. Such a release is not cached: the ZIP shows up at the next check once it is attached.
+
 = Why are the versions named after aviators and aviatrices? =
 
 The plugin carries the theme from GitHub to the sites, as the pioneers of aviation carried the mail and opened the routes: Mermoz, Guillaumet and Saint-Exupéry on the lines of the Aéropostale, from Toulouse to Dakar and over the Andes; Adrienne Bolland, the first woman to fly across the Andes, in 1921; Maryse Bastié over the South Atlantic; Hélène Boucher and her speed records. Each minor or major version takes one of their names.
@@ -95,6 +97,11 @@ The plugin carries the theme from GitHub to the sites, as the pioneers of aviati
 2.2.0, which follows the Plugin Handbook, is Daurat: the director who held the Aéropostale to its rules, and became Rivière in Night Flight, the novel Saint-Exupéry drew from the line.
 
 == Changelog ==
+
+= 2.2.1 =
+* Fixed: **Check again** on the Updates screen changed nothing. WordPress checks theme and plugin updates on that screen only once its last check is a minute old, and the link is clicked sooner: the cached release was dropped, but WordPress kept its verdict. The link now makes it check again on the spot.
+* WordPress shows the theme release as soon as the plugin reads it, from the settings screen or the theme details, instead of at its next check, up to twelve hours later. The settings screen no longer announces an update that WordPress does not show.
+* A theme release without its ZIP is no longer cached, so the ZIP shows up at the next check once it is attached. The settings screen says the ZIP is missing instead of announcing an update.
 
 = 2.2.0 =
 * The theme ZIP is written to disk as it downloads, as WordPress does for its own packages, instead of being held in memory first.

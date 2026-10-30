@@ -142,3 +142,6 @@ msgstr "Aucun journal des modifications pour cette release."
 
 msgid "A GitHub token is required to download theme updates."
 msgstr "Un jeton GitHub est requis pour télécharger les mises à jour du thème."
+
+msgid "no ZIP attached to the release"
+msgstr "aucun ZIP joint à la release"
